@@ -16,3 +16,9 @@ tmp
 .yardoc
 _yardoc
 doc/
+
+.jbundler
+Jarfile.lock
+Gemfile.lock
+
+.DS_Store
