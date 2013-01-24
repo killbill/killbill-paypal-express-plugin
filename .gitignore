@@ -25,3 +25,6 @@ Gemfile.lock
 
 # Build directory
 killbill-paypal-express/
+
+# Config file
+paypal_express.yml
