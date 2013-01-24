@@ -1,0 +1,19 @@
+language: ruby
+
+notifications:
+  email:
+    - killbilling-dev@googlegroups.com
+
+rvm:
+  - jruby-18mode
+  - jruby-19mode
+  - jruby-head
+
+jdk:
+  - openjdk7
+  - oraclejdk7
+  - openjdk6
+
+matrix:
+  allow_failures:
+    - rvm: jruby-head
