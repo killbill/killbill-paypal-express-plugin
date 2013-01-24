@@ -22,3 +22,6 @@ Jarfile.lock
 Gemfile.lock
 
 .DS_Store
+
+# Build directory
+killbill-paypal-express/
