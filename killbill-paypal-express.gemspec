@@ -25,6 +25,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'killbill'
   s.add_dependency 'activemerchant', '~> 1.29.3'
 
+  s.add_development_dependency 'jbundler', '~> 0.4.1'
   s.add_development_dependency 'rake', '>= 10.0.0'
   s.add_development_dependency 'rspec', '~> 2.12.0'
 end
