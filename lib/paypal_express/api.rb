@@ -1,7 +1,7 @@
-require 'active_merchant'
 require 'logger'
 require 'killbill'
 require 'paypal_express/config'
+require 'paypal_express/gateway'
 
 module PaypalExpress
   class PaymentPlugin < Killbill::Plugin::Payment
@@ -13,11 +13,8 @@ module PaypalExpress
       config = Config.new(@config_file)
       config.parse!
 
-      @gateway = ActiveMerchant::Billing::PaypalExpressGateway.new({
-                                                                     :signature => config[:paypal][:signature],
-                                                                     :login => config[:paypal][:login],
-                                                                     :password => config[:paypal][:password]
-                                                                   })
+      @gateway = PaypalExpress::Gateway.instance
+      @gateway.configure(config[:paypal])
 
       super
       @logger.info "PaypalExpress::PaymentPlugin started"
