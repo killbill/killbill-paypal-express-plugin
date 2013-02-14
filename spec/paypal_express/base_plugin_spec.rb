@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'logger'
 require 'tempfile'
 
 describe PaypalExpress::PaymentPlugin do
@@ -13,7 +14,9 @@ eos
     file.flush
 
     @plugin = PaypalExpress::PaymentPlugin.new
-    @plugin.config_file = file.path
+    @plugin.root = File.dirname(file)
+    @plugin.config_file_name = File.basename(file)
+    @plugin.logger = Logger.new(STDOUT)
   end
 
   it "should start and stop correctly" do

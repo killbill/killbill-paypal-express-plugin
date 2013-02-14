@@ -4,8 +4,10 @@ require 'paypal_express/gateway'
 
 module PaypalExpress
   class PaymentPlugin < Killbill::Plugin::Payment
+    attr_writer :config_file_name
+
     def start_plugin
-      config = Config.new("#{@root}/paypal_express.yml")
+      config = Config.new("#{@root}/#{@config_file_name || 'paypal_express.yml'}")
       config.parse!
 
       @gateway = PaypalExpress::Gateway.instance
