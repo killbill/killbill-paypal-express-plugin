@@ -4,7 +4,25 @@ require 'sinatra'
 
 require 'paypal_express/gateway'
 
-post '/1.0/auth', :provides => 'json' do
+def gateway
+  gateway = PaypalExpress::Gateway.instance
+
+  if development? or test?
+    # Find credentials in environment variables:
+    #   export PAYPAL_SIGNATURE='XXXYYY'
+    #   export PAYPAL_LOGIN='xxx.example.com'
+    #   export PAYPAL_PASSWORD='XXXYYY'
+    #
+    # Usage: ruby web.rb -e [ENVIRONMENT]
+    gateway.configure({
+                        :signature => ENV['PAYPAL_SIGNATURE'],
+                        :login     => ENV['PAYPAL_LOGIN'],
+                        :password  => ENV['PAYPAL_PASSWORD'],
+                      })
+  end
+end
+
+post '/plugins/killbill-paypal-express/1.0/auth', :provides => 'json' do
   begin
     data = JSON.parse request.body.read
   rescue JSON::ParserError
@@ -24,20 +42,4 @@ post '/1.0/auth', :provides => 'json' do
   end
 end
 
-def gateway
-  gateway = PaypalExpress::Gateway.instance
-
-  if development? or test?
-    # Find credentials in environment variables:
-    #   export PAYPAL_SIGNATURE='XXXYYY'
-    #   export PAYPAL_LOGIN='xxx.example.com'
-    #   export PAYPAL_PASSWORD='XXXYYY'
-    #
-    # Usage: ruby web.rb -e [ENVIRONMENT]
-    gateway.configure({
-                        :signature => ENV['PAYPAL_SIGNATURE'],
-                        :login     => ENV['PAYPAL_LOGIN'],
-                        :password  => ENV['PAYPAL_PASSWORD'],
-                      })
-  end
-end
+run Sinatra::Application
