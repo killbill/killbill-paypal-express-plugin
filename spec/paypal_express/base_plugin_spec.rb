@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'logger'
 require 'tempfile'
 
-describe PaypalExpress::PaymentPlugin do
+describe Killbill::PaypalExpress::PaymentPlugin do
   before(:each) do
     file = Tempfile.new('paypal_express')
     file.write(<<-eos)
@@ -13,7 +13,7 @@ describe PaypalExpress::PaymentPlugin do
 eos
     file.flush
 
-    @plugin = PaypalExpress::PaymentPlugin.new
+    @plugin = Killbill::PaypalExpress::PaymentPlugin.new
     @plugin.root = File.dirname(file)
     @plugin.config_file_name = File.basename(file)
     @plugin.logger = Logger.new(STDOUT)

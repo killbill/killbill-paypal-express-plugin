@@ -1,11 +1,16 @@
 require 'activemerchant'
 require 'singleton'
 
-module PaypalExpress
+module Killbill::PaypalExpress
   class Gateway
     include Singleton
 
     def configure(config)
+      if config[:log_file]
+        ActiveMerchant::Billing::PaypalExpressGateway.wiredump_device = File.open(config[:log_file], 'w')
+        ActiveMerchant::Billing::PaypalExpressGateway.wiredump_device.sync = true
+      end
+
       @gateway = ActiveMerchant::Billing::PaypalExpressGateway.new({
                                                                      :signature => config[:signature],
                                                                      :login => config[:login],

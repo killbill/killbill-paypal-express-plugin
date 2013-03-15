@@ -1,5 +1,6 @@
 *.gem
 *.rbc
+*.swp
 .bundle
 .config
 coverage
@@ -28,3 +29,6 @@ killbill-paypal-express/
 
 # Config file
 paypal_express.yml
+
+# Testing database
+test.db

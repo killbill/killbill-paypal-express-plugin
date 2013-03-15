@@ -1,7 +1,7 @@
 require 'pathname'
 require 'yaml'
 
-module PaypalExpress
+module Killbill::PaypalExpress
   class Config
     def initialize(file = 'paypal_express.yml')
       @config_file = Pathname.new(file).expand_path
@@ -16,6 +16,7 @@ module PaypalExpress
     def [](key)
       @config[key]
     end
+
     private
 
     def validate!

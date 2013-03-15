@@ -2,7 +2,7 @@ require 'killbill'
 require 'paypal_express/config'
 require 'paypal_express/gateway'
 
-module PaypalExpress
+module Killbill::PaypalExpress
   class PaymentPlugin < Killbill::Plugin::Payment
     attr_writer :config_file_name
 
@@ -10,32 +10,32 @@ module PaypalExpress
       config = Config.new("#{@root}/#{@config_file_name || 'paypal_express.yml'}")
       config.parse!
 
-      @gateway = PaypalExpress::Gateway.instance
+      @gateway = Killbill::PaypalExpress::Gateway.instance
       @gateway.configure(config[:paypal])
 
       super
-      @logger.info "PaypalExpress::PaymentPlugin started"
+      @logger.info "Killbill::PaypalExpress::PaymentPlugin started"
     end
 
-    def charge(killbill_account_id, killbill_payment_id, amount_in_cents, options = {})
+    def charge(kb_payment_id, kb_payment_method_id, amount_in_cents, options = {})
     end
 
-    def refund(killbill_account_id, killbill_payment_id, amount_in_cents, options = {})
+    def refund(kb_payment_id, amount_in_cents, options = {})
     end
 
-    def get_payment_info(killbill_payment_id, options = {})
+    def get_payment_info(kb_payment_id, options = {})
     end
 
-    def add_payment_method(payment_method, options = {})
+    def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, options = {})
     end
 
-    def delete_payment_method(external_payment_method_id, options = {})
+    def delete_payment_method(kb_payment_method_id, options = {})
     end
 
-    def update_payment_method(payment_method, options = {})
+    def get_payment_method_detail(kb_account_id, kb_payment_method_id, options = {})
     end
 
-    def set_default_payment_method(payment_method, options = {})
+    def get_payment_methods(kb_account_id, options = {})
     end
 
     def create_account(killbill_account, options = {})
