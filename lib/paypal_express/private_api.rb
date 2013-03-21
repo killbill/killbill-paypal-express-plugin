@@ -13,7 +13,7 @@ module Killbill::PaypalExpress
       options[:billing_agreement][:type] ||= "RecurringPayments"
       options[:billing_agreement][:description] ||= "Kill Bill agreement"
 
-      # Go to Paypal
+      # Go to Paypal (SetExpressCheckout call)
       paypal_express_response = gateway.setup_authorization amount_in_cents, options
       response = save_response paypal_express_response, :initiate_express_checkout
 

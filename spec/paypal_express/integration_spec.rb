@@ -13,6 +13,8 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.logger = logger
 
     @plugin.start_plugin
+
+    @pm = create_payment_method
   end
 
   after(:each) do
@@ -20,11 +22,10 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   end
 
   it "should be able to charge and refund" do
-    pm = create_payment_method
     amount_in_cents = 10000
     kb_payment_id = SecureRandom.uuid
 
-    payment_response = @plugin.charge kb_payment_id, pm.kb_payment_method_id, amount_in_cents
+    payment_response = @plugin.charge kb_payment_id, @pm.kb_payment_method_id, amount_in_cents
     payment_response.amount_in_cents.should == amount_in_cents
     payment_response.status.should == "Success"
 
@@ -49,6 +50,19 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     response = Killbill::PaypalExpress::PaypalExpressResponse.find_by_api_call_and_kb_payment_id :refund, kb_payment_id
     response.test.should be_true
     response.success.should be_true
+
+    # it "should be able to create and retrieve payment methods"
+    # This should be in a separate scenario but since it's so hard to create a payment method (need manual intervention),
+    # we can't easily delete it
+    pms = @plugin.get_payment_methods(@pm.kb_account_id)
+    pms.size.should == 1
+
+    pm_details = @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id)
+
+    @plugin.delete_payment_method(@pm.kb_payment_method_id)
+
+    @plugin.get_payment_methods(@pm.kb_account_id).size.should == 0
+    lambda { @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id) }.should raise_error RuntimeError
   end
 
   private

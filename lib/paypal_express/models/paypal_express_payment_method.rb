@@ -16,6 +16,7 @@ module Killbill::PaypalExpress
       payment_methods[0]
     end
 
+    # Used to complete the checkout process
     def self.from_kb_account_id_and_token(kb_account_id, token)
       payment_methods = find_all_by_kb_account_id_and_paypal_express_token_and_is_deleted(kb_account_id, token, false)
       raise "No payment method found for account #{kb_account_id}" if payment_methods.empty?
@@ -33,7 +34,7 @@ module Killbill::PaypalExpress
       external_payment_method_id = paypal_express_token
       # No concept of default payment method in Paypal Express
       is_default = false
-      # No extra information is stored in Paypal Express
+      # We don't store extra information in Paypal Express
       properties = []
 
       Killbill::Plugin::PaymentMethodResponse.new external_payment_method_id, is_default, properties

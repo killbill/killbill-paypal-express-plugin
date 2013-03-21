@@ -69,7 +69,7 @@ module Killbill::PaypalExpress
       # The payment method should have been created during the setup step (see private api)
       payment_method = PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token)
 
-      # Go to Paypal
+      # Go to Paypal (GetExpressCheckoutDetails call)
       paypal_express_details_response = @gateway.details_for token
       response = save_response_and_transaction paypal_express_details_response, :details_for
       return false unless response.success?
@@ -86,15 +86,15 @@ module Killbill::PaypalExpress
     end
 
     def delete_payment_method(kb_payment_method_id, options = {})
+      PaypalExpressPaymentMethod.mark_as_deleted! kb_payment_method_id
     end
 
     def get_payment_method_detail(kb_account_id, kb_payment_method_id, options = {})
+      PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id).to_payment_method_response
     end
 
     def get_payment_methods(kb_account_id, options = {})
-    end
-
-    def create_account(killbill_account, options = {})
+      PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id).collect { |pm| pm.to_payment_method_response }
     end
 
     private
