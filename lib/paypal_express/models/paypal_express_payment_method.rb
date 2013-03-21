@@ -16,6 +16,13 @@ module Killbill::PaypalExpress
       payment_methods[0]
     end
 
+    def self.from_kb_account_id_and_token(kb_account_id, token)
+      payment_methods = find_all_by_kb_account_id_and_paypal_express_token_and_is_deleted(kb_account_id, token, false)
+      raise "No payment method found for account #{kb_account_id}" if payment_methods.empty?
+      raise "Paypal token mapping to multiple active PaypalExpress payment methods #{kb_account_id}" if payment_methods.size > 1
+      payment_methods[0]
+    end
+
     def self.mark_as_deleted!(kb_payment_method_id)
       payment_method = from_kb_payment_method_id(kb_payment_method_id)
       payment_method.is_deleted = true

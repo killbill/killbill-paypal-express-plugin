@@ -13,7 +13,6 @@ module Killbill::PaypalExpress
                     :payer_name,
                     :payer_email,
                     :payer_country,
-                    :payer_info,
                     :contact_phone,
                     :ship_to_address_name,
                     :ship_to_address_company,
@@ -24,6 +23,29 @@ module Killbill::PaypalExpress
                     :ship_to_address_country,
                     :ship_to_address_zip,
                     :ship_to_address_phone,
+                    :receiver_info_business,
+                    :receiver_info_receiver,
+                    :receiver_info_receiverid,
+                    :payment_info_transactionid,
+                    :payment_info_parenttransactionid,
+                    :payment_info_receiptid,
+                    :payment_info_transactiontype,
+                    :payment_info_paymenttype,
+                    :payment_info_paymentdate,
+                    :payment_info_grossamount,
+                    :payment_info_feeamount,
+                    :payment_info_taxamount,
+                    :payment_info_exchangerate,
+                    :payment_info_paymentstatus,
+                    :payment_info_pendingreason,
+                    :payment_info_reasoncode,
+                    :payment_info_protectioneligibility,
+                    :payment_info_protectioneligibilitytype,
+                    :payment_info_shipamount,
+                    :payment_info_shiphandleamount,
+                    :payment_info_shipdiscount,
+                    :payment_info_insuranceamount,
+                    :payment_info_subject,
                     :avs_result_code,
                     :avs_result_message,
                     :avs_result_street_match,
@@ -45,7 +67,6 @@ module Killbill::PaypalExpress
                                   :payer_name => response.name,
                                   :payer_email => response.email,
                                   :payer_country => response.payer_country,
-                                  :payer_info => response.info,
                                   :contact_phone => response.contact_phone,
                                   :ship_to_address_name => response.address['name'],
                                   :ship_to_address_company => response.address['company'],
@@ -56,6 +77,29 @@ module Killbill::PaypalExpress
                                   :ship_to_address_country => response.address['country'],
                                   :ship_to_address_zip => response.address['zip'],
                                   :ship_to_address_phone => response.address['phone'],
+                                  :receiver_info_business => receiver_info(response)['Business'],
+                                  :receiver_info_receiver => receiver_info(response)['Receiver'],
+                                  :receiver_info_receiverid => receiver_info(response)['ReceiverID'],
+                                  :payment_info_transactionid => payment_info(response)['TransactionID'],
+                                  :payment_info_parenttransactionid => payment_info(response)['ParentTransactionID'],
+                                  :payment_info_receiptid => payment_info(response)['ReceiptID'],
+                                  :payment_info_transactiontype => payment_info(response)['TransactionType'],
+                                  :payment_info_paymenttype => payment_info(response)['PaymentType'],
+                                  :payment_info_paymentdate => payment_info(response)['PaymentDate'],
+                                  :payment_info_grossamount => payment_info(response)['GrossAmount'],
+                                  :payment_info_feeamount => payment_info(response)['FeeAmount'],
+                                  :payment_info_taxamount => payment_info(response)['TaxAmount'],
+                                  :payment_info_exchangerate => payment_info(response)['ExchangeRate'],
+                                  :payment_info_paymentstatus => payment_info(response)['PaymentStatus'],
+                                  :payment_info_pendingreason => payment_info(response)['PendingReason'],
+                                  :payment_info_reasoncode => payment_info(response)['ReasonCode'],
+                                  :payment_info_protectioneligibility => payment_info(response)['ProtectionEligibility'],
+                                  :payment_info_protectioneligibilitytype => payment_info(response)['ProtectionEligibilityType'],
+                                  :payment_info_shipamount => payment_info(response)['ShipAmount'],
+                                  :payment_info_shiphandleamount => payment_info(response)['ShipHandleAmount'],
+                                  :payment_info_shipdiscount => payment_info(response)['ShipDiscount'],
+                                  :payment_info_insuranceamount => payment_info(response)['InsuranceAmount'],
+                                  :payment_info_subject => payment_info(response)['Subject'],
                                   :avs_result_code => response.avs_result.kind_of?(ActiveMerchant::Billing::AVSResult) ? response.avs_result.code : response.avs_result['code'],
                                   :avs_result_message => response.avs_result.kind_of?(ActiveMerchant::Billing::AVSResult) ? response.avs_result.message : response.avs_result['message'],
                                   :avs_result_street_match => response.avs_result.kind_of?(ActiveMerchant::Billing::AVSResult) ? response.avs_result.street_match : response.avs_result['street_match'],
@@ -83,7 +127,8 @@ module Killbill::PaypalExpress
 
     def to_killbill_response(klass)
       if paypal_express_transaction.nil?
-        amount_in_cents = nil
+        # payment_info_grossamount is e.g. "100.00" - we need to convert it in cents
+        amount_in_cents = payment_info_grossamount ? (payment_info_grossamount.to_f * 100).to_i : nil
         created_date = created_at
       else
         amount_in_cents = paypal_express_transaction.amount_in_cents
@@ -96,6 +141,17 @@ module Killbill::PaypalExpress
       gateway_error_code = nil
 
       klass.new(amount_in_cents, created_date, effective_date, status, gateway_error, gateway_error_code)
+    end
+
+    # Paypal has various response formats depending on the API call and the ActiveMerchant Paypal plugin doesn't try to
+    # unify them, hence the gymnastic here
+
+    def self.receiver_info(response)
+      response.params['ReceiverInfo'] || (response.params['PaymentTransactionDetails'] || {})['ReceiverInfo'] || {}
+    end
+
+    def self.payment_info(response)
+      response.params['PaymentInfo'] || (response.params['PaymentTransactionDetails'] || {})['PaymentInfo'] || {}
     end
   end
 end

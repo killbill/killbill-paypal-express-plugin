@@ -1,26 +1,31 @@
 require 'spec_helper'
 require 'logger'
-require 'tempfile'
 
 describe Killbill::PaypalExpress::PaymentPlugin do
   before(:each) do
-    file = Tempfile.new('paypal_express')
-    file.write(<<-eos)
+    Dir.mktmpdir do |dir|
+      file = File.new(File.join(dir, 'paypal_express.yml'), "w+")
+      file.write(<<-eos)
 :paypal:
   :signature: 'signature'
   :login: 'login'
   :password: 'password'
+:database:
+  :adapter: 'sqlite3'
+  :database: 'shouldntmatter.db'
 eos
-    file.flush
+      file.close
 
-    @plugin = Killbill::PaypalExpress::PaymentPlugin.new
-    @plugin.root = File.dirname(file)
-    @plugin.config_file_name = File.basename(file)
-    @plugin.logger = Logger.new(STDOUT)
+      @plugin = Killbill::PaypalExpress::PaymentPlugin.new
+      @plugin.root = File.dirname(file)
+      @plugin.logger = Logger.new(STDOUT)
+
+      # Start the plugin here - since the config file will be deleted
+      @plugin.start_plugin
+    end
   end
 
   it "should start and stop correctly" do
-    @plugin.start_plugin
     @plugin.stop_plugin
   end
 end

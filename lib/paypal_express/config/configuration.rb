@@ -1,14 +1,15 @@
-module Killbill::PaypalExpress
-  mattr_accessor :config
-  mattr_accessor :gateway
-  mattr_accessor :logger
-  mattr_accessor :paypal_sandbox_url
-  mattr_accessor :paypal_production_url
+require 'logger'
 
+module Killbill::PaypalExpress
+  mattr_reader :logger
+  mattr_reader :config
+  mattr_reader :gateway
+  mattr_reader :paypal_sandbox_url
+  mattr_reader :paypal_production_url
   mattr_reader :initialized
   mattr_reader :test
 
-  def self.initialize!(config_file, logger)
+  def self.initialize!(config_file='paypal_express.yml', logger=Logger.new(STDOUT))
     @@logger = logger
 
     @@config = Properties.new(config_file)

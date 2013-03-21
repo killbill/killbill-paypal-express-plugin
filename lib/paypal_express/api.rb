@@ -1,7 +1,7 @@
 module Killbill::PaypalExpress
   class PaymentPlugin < Killbill::Plugin::Payment
     def start_plugin
-      Killbill::PaypalExpress.initialize! "#{@root}/#{@config_file_name || 'paypal_express.yml'}", @logger
+      Killbill::PaypalExpress.initialize! "#{@root}/paypal_express.yml", @logger
       @gateway = Killbill::PaypalExpress.gateway
 
       super
@@ -54,15 +54,35 @@ module Killbill::PaypalExpress
 
       begin
         transaction_id = paypal_express_transaction.paypal_express_txn_id
-        paypal_express_response = @gateway.transaction_details transaction_id
-        paypal_express_response.to_payment_response
+        response = @gateway.transaction_details transaction_id
+        PaypalExpressResponse.from_response(:transaction_details, kb_payment_id, response).to_payment_response
       rescue => e
         @logger.warn("Exception while retrieving Paypal Express transaction detail for payment #{kb_payment_id}, defaulting to cached response: #{e}")
         paypal_express_transaction.paypal_express_response.to_payment_response
       end
     end
 
-    def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, options = {})
+    def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default=false, options = {})
+      token = payment_method_props.value('token')
+      return false if token.nil?
+
+      # The payment method should have been created during the setup step (see private api)
+      payment_method = PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token)
+
+      # Go to Paypal
+      paypal_express_details_response = @gateway.details_for token
+      response = save_response_and_transaction paypal_express_details_response, :details_for
+      return false unless response.success?
+
+      unless response.payer_id.nil?
+        payment_method.kb_payment_method_id = kb_payment_method_id
+        payment_method.paypal_express_payer_id = response.payer_id
+        payment_method.save!
+        true
+      else
+        logger.warn "Unable to retrieve Payer id details for token #{token} (account #{kb_account_id})"
+        false
+      end
     end
 
     def delete_payment_method(kb_payment_method_id, options = {})
