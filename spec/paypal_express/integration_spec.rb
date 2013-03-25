@@ -25,7 +25,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     amount_in_cents = 10000
     kb_payment_id = SecureRandom.uuid
 
-    payment_response = @plugin.charge kb_payment_id, @pm.kb_payment_method_id, amount_in_cents
+    payment_response = @plugin.process_payment kb_payment_id, @pm.kb_payment_method_id, amount_in_cents
     payment_response.amount_in_cents.should == amount_in_cents
     payment_response.status.should == "Success"
 
@@ -41,9 +41,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     payment_response.status.should == "Success"
 
     # Check we cannot refund an amount greater than the original charge
-    lambda { @plugin.refund kb_payment_id, amount_in_cents + 1 }.should raise_error RuntimeError
+    lambda { @plugin.process_refund kb_payment_id, amount_in_cents + 1 }.should raise_error RuntimeError
 
-    refund_response = @plugin.refund kb_payment_id, amount_in_cents
+    refund_response = @plugin.process_refund kb_payment_id, amount_in_cents
     refund_response.amount_in_cents.should == amount_in_cents
     refund_response.status.should == "Success"
 
@@ -55,9 +55,14 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     # Try another payment to verify the BAID
     second_amount_in_cents = 9423
     second_kb_payment_id = SecureRandom.uuid
-    payment_response = @plugin.charge second_kb_payment_id, @pm.kb_payment_method_id, second_amount_in_cents
+    payment_response = @plugin.process_payment second_kb_payment_id, @pm.kb_payment_method_id, second_amount_in_cents
     payment_response.amount_in_cents.should == second_amount_in_cents
     payment_response.status.should == "Success"
+
+    # Check we can refund it as well
+    refund_response = @plugin.process_refund second_kb_payment_id, second_amount_in_cents
+    refund_response.amount_in_cents.should == second_amount_in_cents
+    refund_response.status.should == "Success"
 
     # it "should be able to create and retrieve payment methods"
     # This should be in a separate scenario but since it's so hard to create a payment method (need manual intervention),

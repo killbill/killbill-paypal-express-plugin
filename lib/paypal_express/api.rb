@@ -15,7 +15,7 @@ module Killbill::PaypalExpress
       'paypal_express'
     end
 
-    def charge(kb_payment_id, kb_payment_method_id, amount_in_cents, options = {})
+    def process_payment(kb_payment_id, kb_payment_method_id, amount_in_cents, options = {})
       # TODO
       # options[:currency] ||=
       options[:payment_type] ||= 'Any'
@@ -35,7 +35,7 @@ module Killbill::PaypalExpress
       response.to_payment_response
     end
 
-    def refund(kb_payment_id, amount_in_cents, options = {})
+    def process_refund(kb_payment_id, amount_in_cents, options = {})
       # Find one successful charge which amount is at least the amount we are trying to refund
       paypal_express_transaction = PaypalExpressTransaction.where("paypal_express_transactions.amount_in_cents >= ?", amount_in_cents).find_last_by_api_call_and_kb_payment_id(:charge, kb_payment_id)
       raise "Unable to find Paypal Express transaction id for payment #{kb_payment_id}" if paypal_express_transaction.nil?
@@ -106,7 +106,7 @@ module Killbill::PaypalExpress
       PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id).to_payment_method_response
     end
 
-    def get_payment_methods(kb_account_id, options = {})
+    def get_payment_methods(kb_account_id, refresh_from_gateway = false, options = {})
       PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id).collect { |pm| pm.to_payment_method_response }
     end
 
