@@ -5,6 +5,9 @@ notifications:
     - killbilling-dev@googlegroups.com
 
 rvm:
+  - 1.9.2
+  - 1.9.3
+  - ruby-head
   - jruby-19mode
   - jruby-head
 
@@ -15,4 +18,5 @@ jdk:
 
 matrix:
   allow_failures:
+    - rvm: ruby-head
     - rvm: jruby-head
