@@ -19,6 +19,8 @@ require 'paypal_express/models/paypal_express_payment_method'
 require 'paypal_express/models/paypal_express_response'
 require 'paypal_express/models/paypal_express_transaction'
 
+require 'paypal_express/paypal_express_utils'
+
 require 'paypal_express/api'
 require 'paypal_express/private_api'
 

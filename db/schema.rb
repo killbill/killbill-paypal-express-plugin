@@ -5,6 +5,7 @@ ActiveRecord::Schema.define(:version => 20130311153635) do
     t.string   "kb_account_id",           :null => false
     t.string   "kb_payment_method_id"     # NULL before Killbill knows about it
     t.string   "paypal_express_payer_id"  # NULL before the express checkout is completed
+    t.string   "paypal_express_baid"      # NULL before the express checkout is completed
     t.string   "paypal_express_token",    :null => false, :unique => true
     t.boolean  "is_deleted",              :null => false, :default => false
     t.datetime "created_at",              :null => false
@@ -30,6 +31,7 @@ ActiveRecord::Schema.define(:version => 20130311153635) do
     t.boolean  "test"
     t.string   "token"
     t.string   "payer_id"
+    t.string   "billing_agreement_id"
     t.string   "payer_name"
     t.string   "payer_email"
     t.string   "payer_country"

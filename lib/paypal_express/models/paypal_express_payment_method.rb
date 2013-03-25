@@ -3,6 +3,7 @@ module Killbill::PaypalExpress
     attr_accessible :kb_account_id,
                     :kb_payment_method_id,
                     :paypal_express_payer_id,
+                    :paypal_express_baid,
                     :paypal_express_token
 
     def self.from_kb_account_id(kb_account_id)
@@ -31,7 +32,7 @@ module Killbill::PaypalExpress
     end
 
     def to_payment_method_response
-      external_payment_method_id = paypal_express_token
+      external_payment_method_id = paypal_express_baid
       # No concept of default payment method in Paypal Express
       is_default = false
       # We don't store extra information in Paypal Express

@@ -2,7 +2,8 @@ module Killbill::PaypalExpress
   class PrivatePaymentPlugin
     include Singleton
 
-    def initiate_express_checkout(kb_account_id, amount_in_cents=1, currency='USD', options = {})
+    # See https://cms.paypal.com/uk/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_ECReferenceTxns
+    def initiate_express_checkout(kb_account_id, amount_in_cents=0, currency='USD', options = {})
       options[:currency] ||= currency
 
       # Required arguments
@@ -10,8 +11,8 @@ module Killbill::PaypalExpress
       options[:cancel_return_url] ||= 'http://www.example.com/sad_panda'
 
       options[:billing_agreement] ||= {}
-      options[:billing_agreement][:type] ||= "RecurringPayments"
-      options[:billing_agreement][:description] ||= "Kill Bill agreement"
+      options[:billing_agreement][:type] ||= "MerchantInitiatedBilling"
+      options[:billing_agreement][:description] ||= "Kill Bill billing agreement"
 
       # Go to Paypal (SetExpressCheckout call)
       paypal_express_response = gateway.setup_authorization amount_in_cents, options

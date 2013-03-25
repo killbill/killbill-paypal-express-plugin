@@ -35,6 +35,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     response.success.should be_true
     response.message.should == "Success"
 
+    # Check we can retrieve the payment
     payment_response = @plugin.get_payment_info kb_payment_id
     payment_response.amount_in_cents.should == amount_in_cents
     payment_response.status.should == "Success"
@@ -51,13 +52,22 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     response.test.should be_true
     response.success.should be_true
 
+    # Try another payment to verify the BAID
+    second_amount_in_cents = 9423
+    second_kb_payment_id = SecureRandom.uuid
+    payment_response = @plugin.charge second_kb_payment_id, @pm.kb_payment_method_id, second_amount_in_cents
+    payment_response.amount_in_cents.should == second_amount_in_cents
+    payment_response.status.should == "Success"
+
     # it "should be able to create and retrieve payment methods"
     # This should be in a separate scenario but since it's so hard to create a payment method (need manual intervention),
     # we can't easily delete it
     pms = @plugin.get_payment_methods(@pm.kb_account_id)
     pms.size.should == 1
+    pms[0].external_payment_method_id.should == @pm.paypal_express_baid
 
     pm_details = @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id)
+    pm_details.external_payment_method_id.should == @pm.paypal_express_baid
 
     @plugin.delete_payment_method(@pm.kb_payment_method_id)
 
@@ -90,6 +100,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_method = Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token)
     payment_method.should_not be_nil
     payment_method.paypal_express_payer_id.should_not be_nil
+    payment_method.paypal_express_baid.should_not be_nil
     payment_method.kb_payment_method_id.should == kb_payment_method_id
 
     payment_method

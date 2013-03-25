@@ -4,6 +4,8 @@ module Killbill::PaypalExpress
       Killbill::PaypalExpress.initialize! "#{@root}/paypal_express.yml", @logger
       @gateway = Killbill::PaypalExpress.gateway
 
+      @ip = Utils.ip
+
       super
 
       @logger.info "Killbill::PaypalExpress::PaymentPlugin started"
@@ -16,16 +18,18 @@ module Killbill::PaypalExpress
     def charge(kb_payment_id, kb_payment_method_id, amount_in_cents, options = {})
       # TODO
       # options[:currency] ||=
+      options[:payment_type] ||= 'Any'
+      options[:invoice_id] ||= kb_payment_id
+      options[:description] ||= "Kill Bill payment for #{kb_payment_id}"
+      options[:ip] ||= @ip
 
-      # Required arguments
-      if options[:token].blank? or options[:payer_id].blank?
+      if options[:reference_id].blank?
         payment_method = PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id)
-        options[:payer_id] ||= payment_method.paypal_express_payer_id
-        options[:token] ||= payment_method.paypal_express_token
+        options[:reference_id] = payment_method.paypal_express_baid
       end
 
-      # Go to Paypal
-      paypal_response = @gateway.purchase amount_in_cents, options
+      # Go to Paypal (DoReferenceTransaction call)
+      paypal_response = @gateway.reference_transaction amount_in_cents, options
       response = save_response_and_transaction paypal_response, :charge, kb_payment_id, amount_in_cents
 
       response.to_payment_response
@@ -69,15 +73,24 @@ module Killbill::PaypalExpress
       # The payment method should have been created during the setup step (see private api)
       payment_method = PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token)
 
-      # Go to Paypal (GetExpressCheckoutDetails call)
+      # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
       paypal_express_details_response = @gateway.details_for token
       response = save_response_and_transaction paypal_express_details_response, :details_for
       return false unless response.success?
 
-      unless response.payer_id.nil?
+      payer_id = response.payer_id
+      unless payer_id.nil?
+        # Go to Paypal to create the BAID for recurring payments (CreateBillingAgreement call)
+        paypal_express_baid_response = @gateway.create_billing_agreement :token => token
+        response = save_response_and_transaction paypal_express_baid_response, :create_billing_agreement
+        return false unless response.success?
+
         payment_method.kb_payment_method_id = kb_payment_method_id
-        payment_method.paypal_express_payer_id = response.payer_id
+        payment_method.paypal_express_payer_id = payer_id
+        payment_method.paypal_express_baid = response.billing_agreement_id
         payment_method.save!
+
+        logger.info "Created BAID #{payment_method.paypal_express_baid} for payment method #{kb_payment_method_id} (account #{kb_account_id})"
         true
       else
         logger.warn "Unable to retrieve Payer id details for token #{token} (account #{kb_account_id})"

@@ -1,13 +1,13 @@
+configure do
+  # Usage: rackup -Ilib -E test
+  if development? or test?
+    Killbill::PaypalExpress.initialize! unless Killbill::PaypalExpress.initialized
+  end
+end
+
 helpers do
   def plugin
-    plugin = Killbill::PaypalExpress::PrivatePaymentPlugin.instance
-
-    # Usage: rackup -Ilib -E test
-    if development? or test?
-      Killbill::PaypalExpress.initialize! unless Killbill::PaypalExpress.initialized
-    end
-
-    plugin
+    Killbill::PaypalExpress::PrivatePaymentPlugin.instance
   end
 end
 
@@ -20,7 +20,7 @@ post '/plugins/killbill-paypal-express/1.0/setup-checkout', :provides => 'json' 
   end
 
   response = plugin.initiate_express_checkout data['kb_account_id'],
-                                              data['amount_in_cents'] || 1,
+                                              data['amount_in_cents'] || 0,
                                               data['currency'] || 'USD',
                                               data['options'] || {}
   unless response.success?
@@ -36,7 +36,7 @@ get '/plugins/killbill-paypal-express/1.0/pms/:id', :provides => 'json' do
   if pm = Killbill::PaypalExpress::PaypalExpressPaymentMethod.find_by_id(params[:id].to_i)
     pm.to_json
   else
-    json_status 404, "Not found"
+    status 404
   end
 end
 
@@ -45,6 +45,6 @@ get '/plugins/killbill-paypal-express/1.0/transactions/:id', :provides => 'json'
   if transaction = Killbill::PaypalExpress::PaypalExpressTransaction.find_by_id(params[:id].to_i)
     transaction.to_json
   else
-    json_status 404, "Not found"
+    status 404
   end
 end
