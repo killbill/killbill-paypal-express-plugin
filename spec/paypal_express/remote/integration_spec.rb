@@ -6,7 +6,7 @@ ActiveMerchant::Billing::Base.mode = :test
 describe Killbill::PaypalExpress::PaymentPlugin do
   before(:each) do
     @plugin = Killbill::PaypalExpress::PaymentPlugin.new
-    @plugin.root = File.expand_path(File.dirname(__FILE__) + '../../../')
+    @plugin.root = File.expand_path(File.dirname(__FILE__) + '../../../../')
 
     logger = Logger.new(STDOUT)
     logger.level = Logger::DEBUG
