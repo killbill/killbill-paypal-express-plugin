@@ -23,9 +23,10 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
   it "should be able to charge and refund" do
     amount_in_cents = 10000
+    currency = 'USD'
     kb_payment_id = SecureRandom.uuid
 
-    payment_response = @plugin.process_payment kb_payment_id, @pm.kb_payment_method_id, amount_in_cents
+    payment_response = @plugin.process_payment @pm.kb_account_id, kb_payment_id, @pm.kb_payment_method_id, amount_in_cents, currency
     payment_response.amount_in_cents.should == amount_in_cents
     payment_response.status.should == "Success"
 
@@ -36,14 +37,14 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     response.message.should == "Success"
 
     # Check we can retrieve the payment
-    payment_response = @plugin.get_payment_info kb_payment_id
+    payment_response = @plugin.get_payment_info @pm.kb_account_id, kb_payment_id
     payment_response.amount_in_cents.should == amount_in_cents
     payment_response.status.should == "Success"
 
     # Check we cannot refund an amount greater than the original charge
-    lambda { @plugin.process_refund kb_payment_id, amount_in_cents + 1 }.should raise_error RuntimeError
+    lambda { @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount_in_cents + 1, currency }.should raise_error RuntimeError
 
-    refund_response = @plugin.process_refund kb_payment_id, amount_in_cents
+    refund_response = @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount_in_cents, currency
     refund_response.amount_in_cents.should == amount_in_cents
     refund_response.status.should == "Success"
 
@@ -55,26 +56,26 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     # Try another payment to verify the BAID
     second_amount_in_cents = 9423
     second_kb_payment_id = SecureRandom.uuid
-    payment_response = @plugin.process_payment second_kb_payment_id, @pm.kb_payment_method_id, second_amount_in_cents
+    payment_response = @plugin.process_payment @pm.kb_account_id, second_kb_payment_id, @pm.kb_payment_method_id, second_amount_in_cents, currency
     payment_response.amount_in_cents.should == second_amount_in_cents
     payment_response.status.should == "Success"
 
     # Check we can refund it as well
-    refund_response = @plugin.process_refund second_kb_payment_id, second_amount_in_cents
+    refund_response = @plugin.process_refund @pm.kb_account_id, second_kb_payment_id, second_amount_in_cents, currency
     refund_response.amount_in_cents.should == second_amount_in_cents
     refund_response.status.should == "Success"
 
     # it "should be able to create and retrieve payment methods"
     # This should be in a separate scenario but since it's so hard to create a payment method (need manual intervention),
     # we can't easily delete it
-    pms = @plugin.get_payment_methods(@pm.kb_account_id)
+    pms = @plugin.get_payment_methods @pm.kb_account_id
     pms.size.should == 1
     pms[0].external_payment_method_id.should == @pm.paypal_express_baid
 
     pm_details = @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id)
     pm_details.external_payment_method_id.should == @pm.paypal_express_baid
 
-    @plugin.delete_payment_method(@pm.kb_payment_method_id)
+    @plugin.delete_payment_method @pm.kb_account_id, @pm.kb_payment_method_id
 
     @plugin.get_payment_methods(@pm.kb_account_id).size.should == 0
     lambda { @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id) }.should raise_error RuntimeError

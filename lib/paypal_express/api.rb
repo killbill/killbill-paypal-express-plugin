@@ -15,9 +15,8 @@ module Killbill::PaypalExpress
       'paypal_express'
     end
 
-    def process_payment(kb_payment_id, kb_payment_method_id, amount_in_cents, options = {})
-      # TODO
-      # options[:currency] ||=
+    def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, options = {})
+      options[:currency] ||= currency
       options[:payment_type] ||= 'Any'
       options[:invoice_id] ||= kb_payment_id
       options[:description] ||= "Kill Bill payment for #{kb_payment_id}"
@@ -35,13 +34,12 @@ module Killbill::PaypalExpress
       response.to_payment_response
     end
 
-    def process_refund(kb_payment_id, amount_in_cents, options = {})
+    def process_refund(kb_account_id, kb_payment_id, amount_in_cents, currency, options = {})
       # Find one successful charge which amount is at least the amount we are trying to refund
       paypal_express_transaction = PaypalExpressTransaction.where("paypal_express_transactions.amount_in_cents >= ?", amount_in_cents).find_last_by_api_call_and_kb_payment_id(:charge, kb_payment_id)
       raise "Unable to find Paypal Express transaction id for payment #{kb_payment_id}" if paypal_express_transaction.nil?
 
-      # TODO
-      # options[:currency] ||=
+      options[:currency] ||= currency
       options[:refund_type] ||= paypal_express_transaction.amount_in_cents != amount_in_cents ? 'Partial' : 'Full'
 
       identification = paypal_express_transaction.paypal_express_txn_id
@@ -53,7 +51,7 @@ module Killbill::PaypalExpress
       response.to_refund_response
     end
 
-    def get_payment_info(kb_payment_id, options = {})
+    def get_payment_info(kb_account_id, kb_payment_id, options = {})
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id)
 
       begin
@@ -98,7 +96,7 @@ module Killbill::PaypalExpress
       end
     end
 
-    def delete_payment_method(kb_payment_method_id, options = {})
+    def delete_payment_method(kb_account_id, kb_payment_method_id, options = {})
       PaypalExpressPaymentMethod.mark_as_deleted! kb_payment_method_id
     end
 
