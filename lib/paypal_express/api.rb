@@ -11,10 +11,6 @@ module Killbill::PaypalExpress
       @logger.info "Killbill::PaypalExpress::PaymentPlugin started"
     end
 
-    def get_name
-      'paypal_express'
-    end
-
     def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, options = {})
       options[:currency] ||= currency
       options[:payment_type] ||= 'Any'
