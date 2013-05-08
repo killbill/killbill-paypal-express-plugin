@@ -1,7 +1,7 @@
 module Killbill::PaypalExpress
   class PaymentPlugin < Killbill::Plugin::Payment
     def start_plugin
-      Killbill::PaypalExpress.initialize! "#{@root}/paypal_express.yml", @logger
+      Killbill::PaypalExpress.initialize! @logger, @conf_dir
       @gateway = Killbill::PaypalExpress.gateway
 
       @ip = Utils.ip

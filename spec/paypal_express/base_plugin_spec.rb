@@ -17,8 +17,8 @@ eos
       file.close
 
       @plugin = Killbill::PaypalExpress::PaymentPlugin.new
-      @plugin.root = File.dirname(file)
       @plugin.logger = Logger.new(STDOUT)
+      @plugin.conf_dir = File.dirname(file)
 
       # Start the plugin here - since the config file will be deleted
       @plugin.start_plugin

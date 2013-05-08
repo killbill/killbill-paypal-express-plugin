@@ -9,9 +9,10 @@ module Killbill::PaypalExpress
   mattr_reader :initialized
   mattr_reader :test
 
-  def self.initialize!(config_file='paypal_express.yml', logger=Logger.new(STDOUT))
+  def self.initialize!(logger=Logger.new(STDOUT), conf_dir=File.expand_path('../../../', File.dirname(__FILE__)))
     @@logger = logger
 
+    config_file = "#{conf_dir}/paypal_express.yml"
     @@config = Properties.new(config_file)
     @@config.parse!
 
