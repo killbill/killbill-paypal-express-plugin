@@ -75,7 +75,7 @@ module Killbill::PaypalExpress
       payer_id = response.payer_id
       unless payer_id.nil?
         # Go to Paypal to create the BAID for recurring payments (CreateBillingAgreement call)
-        paypal_express_baid_response = @gateway.create_billing_agreement :token => token
+        paypal_express_baid_response = @gateway.store token
         response = save_response_and_transaction paypal_express_baid_response, :create_billing_agreement
         return false unless response.success?
 
@@ -113,7 +113,7 @@ module Killbill::PaypalExpress
       response = PaypalExpressResponse.from_response(api_call, kb_payment_id, paypal_express_response)
       response.save!
 
-      if response.success and !response.authorization.blank?
+      if response.success and !kb_payment_id.blank? and !response.authorization.blank?
         # Record the transaction
         transaction = response.create_paypal_express_transaction!(:amount_in_cents => amount_in_cents, :api_call => api_call, :kb_payment_id => kb_payment_id, :paypal_express_txn_id => response.authorization)
         @logger.debug "Recorded transaction: #{transaction.inspect}"
