@@ -51,6 +51,13 @@ curl -v \
      "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?isDefault=true"
 ```
 
+To display the payment method details for that account, one can call:
+
+```
+curl -v \
+     "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
+```
+
 Requirements
 ------------
 
