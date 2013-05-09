@@ -6,6 +6,11 @@ killbill-paypal-express-plugin
 
 Plugin to use Express Checkout as a gateway.
 
+Requirements
+------------
+
+The plugin needs a database. The latest version of the schema can be found here: https://raw.github.com/killbill/killbill-paypal-express-plugin/master/db/ddl.sql.
+
 Configuration
 -------------
 
