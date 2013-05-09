@@ -6,8 +6,14 @@ if [ "$VERSION" != "$(cat $PWD/VERSION)" ]; then
   exit 1
 fi
 
+echo "Cleaning up"
+rake killbill:clean ; rake build
+
 echo "Pushing the gem to Rubygems"
 rake release
+
+echo "Building artifact"
+rake killbill:package
 
 ARTIFACT="$PWD/pkg/killbill-paypal-express-$VERSION.tar.gz"
 echo "Pushing $ARTIFACT to Maven Central"
