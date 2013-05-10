@@ -6,6 +6,58 @@ killbill-paypal-express-plugin
 
 Plugin to use Express Checkout as a gateway.
 
+Usage
+-----
+
+Issue the following call to generate a Paypal token:
+
+```
+curl -v \
+     -X POST \
+     -H "Content-Type: application/json" \
+     --data-binary '{
+       "kb_account_id": "13d26090-b8d7-11e2-9e96-0800200c9a66",
+       "currency": "USD",
+       "options": {
+         "return_url": "http://www.google.com/?q=SUCCESS",
+         "cancel_return_url": "http://www.google.com/?q=FAILURE",
+         "billing_agreement": {
+           "description": "Your subscription"
+         }
+       }
+     }' \
+     "http://$HOST:8080/plugins/killbill-paypal-express/1.0/setup-checkout"
+```
+
+Kill Bill will return a 303 See Other on success. The customer should be redirected to the url specified in the Location header, e.g. https://www.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-20G53990M6953444J.
+
+Once the customer comes back from the PayPal flow, save the BAID in Kill Bill:
+
+```
+curl -v \
+     -X POST \
+     -H "Content-Type: application/json" \
+     -H "X-Killbill-CreatedBy: Web server" \
+     -H "X-Killbill-Reason: New account" \
+     --data-binary '{
+       "pluginName": "killbill-paypal-express",
+       "pluginInfo": {
+         "properties": [{
+           "key": "token",
+           "value": "20G53990M6953444J"
+         }]
+       }
+     }' \
+     "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?isDefault=true"
+```
+
+To display the payment method details for that account, one can call:
+
+```
+curl -v \
+     "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
+```
+
 Requirements
 ------------
 
