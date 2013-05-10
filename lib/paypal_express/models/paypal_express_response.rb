@@ -118,31 +118,39 @@ module Killbill::PaypalExpress
     end
 
     def to_payment_response
-      to_killbill_response Killbill::Plugin::PaymentResponse
+      to_killbill_response :payment
     end
 
     def to_refund_response
-      to_killbill_response Killbill::Plugin::RefundResponse
+      to_killbill_response :refund
     end
 
     private
 
-    def to_killbill_response(klass)
+    def to_killbill_response(type)
       if paypal_express_transaction.nil?
         # payment_info_grossamount is e.g. "100.00" - we need to convert it in cents
         amount_in_cents = payment_info_grossamount ? (payment_info_grossamount.to_f * 100).to_i : nil
         created_date = created_at
+        first_payment_reference_id = nil
+        second_payment_reference_id = nil
       else
         amount_in_cents = paypal_express_transaction.amount_in_cents
         created_date = paypal_express_transaction.created_at
+        first_payment_reference_id = paypal_express_transaction.paypal_express_txn_id
+        second_payment_reference_id = paypal_express_transaction.id.to_s
       end
 
       effective_date = created_date
-      status = message
-      gateway_error = nil
+      status = success ? Killbill::Plugin::PaymentStatus::SUCCESS : Killbill::Plugin::PaymentStatus::ERROR
+      gateway_error = message
       gateway_error_code = nil
 
-      klass.new(amount_in_cents, created_date, effective_date, status, gateway_error, gateway_error_code)
+      if type == :payment
+        Killbill::Plugin::PaymentResponse.new(amount_in_cents, created_date, effective_date, status, gateway_error, gateway_error_code, first_payment_reference_id, second_payment_reference_id)
+      else
+        Killbill::Plugin::RefundResponse.new(amount_in_cents, created_date, effective_date, status, gateway_error, gateway_error_code, first_payment_reference_id)
+      end
     end
 
     # Paypal has various response formats depending on the API call and the ActiveMerchant Paypal plugin doesn't try to

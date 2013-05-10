@@ -12,6 +12,10 @@ module Killbill::PaypalExpress
     end
 
     def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, options = {})
+      # If the payment was already made, just return the status
+      paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id) rescue nil
+      return paypal_express_transaction.paypal_express_response.to_payment_response unless paypal_express_transaction.nil?
+
       options[:currency] ||= currency
       options[:payment_type] ||= 'Any'
       options[:invoice_id] ||= kb_payment_id
@@ -31,9 +35,7 @@ module Killbill::PaypalExpress
     end
 
     def process_refund(kb_account_id, kb_payment_id, amount_in_cents, currency, options = {})
-      # Find one successful charge which amount is at least the amount we are trying to refund
-      paypal_express_transaction = PaypalExpressTransaction.where("paypal_express_transactions.amount_in_cents >= ?", amount_in_cents).find_last_by_api_call_and_kb_payment_id(:charge, kb_payment_id)
-      raise "Unable to find Paypal Express transaction id for payment #{kb_payment_id}" if paypal_express_transaction.nil?
+      paypal_express_transaction = PaypalExpressTransaction.find_candidate_transaction_for_refund(kb_payment_id, amount_in_cents)
 
       options[:currency] ||= currency
       options[:refund_type] ||= paypal_express_transaction.amount_in_cents != amount_in_cents ? 'Partial' : 'Full'

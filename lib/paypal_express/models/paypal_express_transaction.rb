@@ -12,5 +12,22 @@ module Killbill::PaypalExpress
       raise "Killbill payment mapping to multiple Paypal Express transactions for payment #{kb_payment_id}" if paypal_express_transactions.size > 1
       paypal_express_transactions[0]
     end
+
+    def self.find_candidate_transaction_for_refund(kb_payment_id, amount_in_cents)
+      # Find one successful charge which amount is at least the amount we are trying to refund
+      paypal_express_transactions = PaypalExpressTransaction.where("paypal_express_transactions.amount_in_cents >= ?", amount_in_cents)
+                                                            .find_all_by_api_call_and_kb_payment_id(:charge, kb_payment_id)
+      raise "Unable to find Paypal Express transaction id for payment #{kb_payment_id}" if paypal_express_transactions.size == 0
+
+      # We have candidates, but we now need to make sure we didn't refund more than for the specified amount
+      amount_refunded_in_cents = Killbill::PaypalExpress::PaypalExpressTransaction.where("api_call = ? and kb_payment_id = ?", :refund, kb_payment_id)
+                                                                                  .sum("amount_in_cents")
+
+      amount_left_to_refund_in_cents = -amount_refunded_in_cents
+      paypal_express_transactions.map { |transaction| amount_left_to_refund_in_cents += transaction.amount_in_cents }
+      raise "Amount #{amount_in_cents} too large to refund for payment #{kb_payment_id}" if amount_left_to_refund_in_cents < amount_in_cents
+
+      paypal_express_transactions.first
+    end
   end
 end
