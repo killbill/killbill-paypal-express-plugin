@@ -11,6 +11,11 @@ module Killbill::PaypalExpress
       @logger.info "Killbill::PaypalExpress::PaymentPlugin started"
     end
 
+    # return DB connections to the Pool if required
+    def after_request
+      ActiveRecord::Base.connection.close
+    end
+
     def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, options = {})
       # If the payment was already made, just return the status
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id) rescue nil
