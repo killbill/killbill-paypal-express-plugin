@@ -24,4 +24,5 @@ mvn gpg:sign-and-deploy-file \
     -Dpackaging=tar.gz \
     -DrepositoryId=ossrh-releases \
     -Durl=https://oss.sonatype.org/service/local/staging/deploy/maven2/ \
-    -Dfile=$ARTIFACT
+    -Dfile=$ARTIFACT \
+    -DpomFile=pom.xml
