@@ -27,6 +27,15 @@
     <packaging>pom</packaging>
     <version>1.0.3</version>
     <name>paypal-express-plugin</name>
+    <url>http://github.com/killbill/killbill-paypal-express-plugin</url>
+    <description>Plugin for accessing paypal as a payment gateway</description>
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
     <scm>
         <connection>scm:git:git://github.com/killbill/killbill-paypal-express-plugin.git</connection>
         <url>https://github.com/killbill/killbill-paypal-express-plugin/</url>
