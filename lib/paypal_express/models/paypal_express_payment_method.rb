@@ -38,7 +38,7 @@ module Killbill::PaypalExpress
       # We don't store extra information in Paypal Express
       properties = []
 
-      Killbill::Plugin::PaymentMethodResponse.new external_payment_method_id, is_default, properties
+      Killbill::Plugin::Model::PaymentMethodPlugin.new(external_payment_method_id, is_default, properties, "PayPal", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
     end
   end
 end

@@ -6,9 +6,6 @@ require 'singleton'
 require 'yaml'
 
 require 'killbill'
-require 'killbill/response/payment_method_response'
-require 'killbill/response/payment_response'
-require 'killbill/response/refund_response'
 
 require 'paypal_express/config/configuration'
 require 'paypal_express/config/properties'
