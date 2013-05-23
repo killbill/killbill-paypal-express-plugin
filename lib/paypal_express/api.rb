@@ -16,7 +16,7 @@ module Killbill::PaypalExpress
       ActiveRecord::Base.connection.close
     end
 
-    def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, options = {})
+    def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, call_context, options = {})
       # If the payment was already made, just return the status
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id) rescue nil
       return paypal_express_transaction.paypal_express_response.to_payment_response unless paypal_express_transaction.nil?
@@ -39,7 +39,7 @@ module Killbill::PaypalExpress
       response.to_payment_response
     end
 
-    def process_refund(kb_account_id, kb_payment_id, amount_in_cents, currency, options = {})
+    def process_refund(kb_account_id, kb_payment_id, amount_in_cents, currency, call_context, options = {})
       paypal_express_transaction = PaypalExpressTransaction.find_candidate_transaction_for_refund(kb_payment_id, amount_in_cents)
 
       options[:currency] ||= currency
@@ -54,7 +54,7 @@ module Killbill::PaypalExpress
       response.to_refund_response
     end
 
-    def get_payment_info(kb_account_id, kb_payment_id, options = {})
+    def get_payment_info(kb_account_id, kb_payment_id, tenant_context, options = {})
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id)
 
       begin
@@ -67,8 +67,8 @@ module Killbill::PaypalExpress
       end
     end
 
-    def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default=false, options = {})
-      token = payment_method_props.value('token')
+    def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, call_context, options = {})
+      token = (payment_method_props.properties.find { |kv| kv.key == 'token' }).value
       return false if token.nil?
 
       # The payment method should have been created during the setup step (see private api)
@@ -99,15 +99,15 @@ module Killbill::PaypalExpress
       end
     end
 
-    def delete_payment_method(kb_account_id, kb_payment_method_id, options = {})
+    def delete_payment_method(kb_account_id, kb_payment_method_id, call_context, options = {})
       PaypalExpressPaymentMethod.mark_as_deleted! kb_payment_method_id
     end
 
-    def get_payment_method_detail(kb_account_id, kb_payment_method_id, options = {})
+    def get_payment_method_detail(kb_account_id, kb_payment_method_id, tenant_context, options = {})
       PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id).to_payment_method_response
     end
 
-    def get_payment_methods(kb_account_id, refresh_from_gateway = false, options = {})
+    def get_payment_methods(kb_account_id, refresh_from_gateway, call_context, options = {})
       PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id).collect { |pm| pm.to_payment_method_response }
     end
 
