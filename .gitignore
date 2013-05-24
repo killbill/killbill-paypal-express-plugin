@@ -35,3 +35,5 @@ test.db
 
 target
 pom.xml.asc
+
+.idea
