@@ -22,7 +22,7 @@ post '/plugins/killbill-paypal-express/1.0/setup-checkout', :provides => 'json' 
   response = plugin.initiate_express_checkout data['kb_account_id'],
                                               data['amount_in_cents'] || 0,
                                               data['currency'] || 'USD',
-                                              data['options'] || {}
+                                              (data['options'] || {}).deep_symbolize_keys
   unless response.success?
     status 500
     response.message
