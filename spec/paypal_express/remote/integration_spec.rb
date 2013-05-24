@@ -62,6 +62,11 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     response.test.should be_true
     response.success.should be_true
 
+    # Check we can retrieve the refund
+    refund_response = @plugin.get_refund_info @pm.kb_account_id, kb_payment_id, @call_context
+    refund_response.amount.should == (-1 * amount_in_cents)
+    refund_response.status.should == Killbill::Plugin::Model::PaymentPluginStatus.new(:PROCESSED)
+
     # Try another payment to verify the BAID
     second_amount_in_cents = 9423
     second_kb_payment_id = SecureRandom.uuid

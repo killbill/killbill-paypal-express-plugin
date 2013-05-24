@@ -39,6 +39,19 @@ module Killbill::PaypalExpress
       response.to_payment_response
     end
 
+    def get_payment_info(kb_account_id, kb_payment_id, tenant_context, options = {})
+      paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id.to_s)
+
+      begin
+        transaction_id = paypal_express_transaction.paypal_express_txn_id
+        response = @gateway.transaction_details transaction_id
+        PaypalExpressResponse.from_response(:transaction_details, kb_payment_id.to_s, response).to_payment_response
+      rescue => e
+        @logger.warn("Exception while retrieving Paypal Express transaction detail for payment #{kb_payment_id.to_s}, defaulting to cached response: #{e}")
+        paypal_express_transaction.paypal_express_response.to_payment_response
+      end
+    end
+
     def process_refund(kb_account_id, kb_payment_id, amount_in_cents, currency, call_context, options = {})
       paypal_express_transaction = PaypalExpressTransaction.find_candidate_transaction_for_refund(kb_payment_id.to_s, amount_in_cents)
 
@@ -54,16 +67,16 @@ module Killbill::PaypalExpress
       response.to_refund_response
     end
 
-    def get_payment_info(kb_account_id, kb_payment_id, tenant_context, options = {})
-      paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id.to_s)
+    def get_refund_info(kb_account_id, kb_payment_id, tenant_context, options = {})
+      paypal_express_transaction = PaypalExpressTransaction.refund_from_kb_payment_id(kb_payment_id.to_s)
 
       begin
         transaction_id = paypal_express_transaction.paypal_express_txn_id
         response = @gateway.transaction_details transaction_id
-        PaypalExpressResponse.from_response(:transaction_details, kb_payment_id.to_s, response).to_payment_response
+        PaypalExpressResponse.from_response(:transaction_details, kb_payment_id.to_s, response).to_refund_response
       rescue => e
         @logger.warn("Exception while retrieving Paypal Express transaction detail for payment #{kb_payment_id.to_s}, defaulting to cached response: #{e}")
-        paypal_express_transaction.paypal_express_response.to_payment_response
+        paypal_express_transaction.paypal_express_response.to_refund_response
       end
     end
 
@@ -107,8 +120,16 @@ module Killbill::PaypalExpress
       PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id.to_s).to_payment_method_response
     end
 
+    def set_default_payment_method(kb_account_id, kb_payment_method_id, call_context, options = {})
+      # No-op
+    end
+
     def get_payment_methods(kb_account_id, refresh_from_gateway, call_context, options = {})
       PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id.to_s).collect { |pm| pm.to_payment_method_response }
+    end
+
+    def reset_payment_methods(kb_account_id, payment_methods)
+      # No-op
     end
 
     private
