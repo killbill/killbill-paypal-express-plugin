@@ -35,8 +35,11 @@ module Killbill::PaypalExpress
       external_payment_method_id = paypal_express_baid
       # No concept of default payment method in Paypal Express
       is_default = false
-      # We don't store extra information in Paypal Express
+
       properties = []
+      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, "payerId", paypal_express_payer_id)
+      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, "baid", paypal_express_baid)
+      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, "token", paypal_express_token)
 
       Killbill::Plugin::Model::PaymentMethodPlugin.new(external_payment_method_id, is_default, properties, "PayPal", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
     end
