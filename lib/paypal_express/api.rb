@@ -125,7 +125,7 @@ module Killbill::PaypalExpress
     end
 
     def get_payment_methods(kb_account_id, refresh_from_gateway, call_context, options = {})
-      PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id.to_s).collect { |pm| pm.to_payment_method_response }
+      PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id.to_s).collect { |pm| pm.to_payment_method_info_response }
     end
 
     def reset_payment_methods(kb_account_id, payment_methods)
