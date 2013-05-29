@@ -29,7 +29,7 @@ curl -v \
      "http://$HOST:8080/plugins/killbill-paypal-express/1.0/setup-checkout"
 ```
 
-Kill Bill will return a 303 See Other on success. The customer should be redirected to the url specified in the Location header, e.g. https://www.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-20G53990M6953444J.
+Kill Bill will return a 302 Found on success. The customer should be redirected to the url specified in the Location header, e.g. https://www.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-20G53990M6953444J.
 
 Once the customer comes back from the PayPal flow, save the BAID in Kill Bill:
 
