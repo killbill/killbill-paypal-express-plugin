@@ -4,15 +4,15 @@ Gem::Specification.new do |s|
   s.name        = 'killbill-paypal-express'
   s.version     = version
   s.summary     = 'Plugin to use Express Checkout as a gateway.'
-  s.description = 'Killbill payment plugin for Paypal Express Checkout.'
+  s.description = 'Kill Bill payment plugin for Paypal Express Checkout.'
 
   s.required_ruby_version = '>= 1.9.3'
 
   s.license = 'Apache License (2.0)'
 
-  s.author   = 'Killbill core team'
+  s.author   = 'Kill Bill core team'
   s.email    = 'killbilling-users@googlegroups.com'
-  s.homepage = 'http://www.killbilling.org'
+  s.homepage = 'http://kill-bill.org'
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
 
   s.rdoc_options << '--exclude' << '.'
 
-  s.add_dependency 'killbill', '~> 1.0.17'
+  s.add_dependency 'killbill', '~> 1.0.18'
   s.add_dependency 'activemerchant', '~> 2.0.0'
   s.add_dependency 'activerecord', '~> 3.2.1'
   s.add_dependency 'sinatra', '~> 1.3.4'
