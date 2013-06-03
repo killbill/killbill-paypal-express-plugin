@@ -37,11 +37,26 @@ module Killbill::PaypalExpress
       is_default = false
 
       properties = []
-      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, "payerId", paypal_express_payer_id)
-      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, "baid", paypal_express_baid)
-      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, "token", paypal_express_token)
+      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerId', paypal_express_payer_id)
+      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'baid', paypal_express_baid)
+      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'token', paypal_express_token)
 
-      Killbill::Plugin::Model::PaymentMethodPlugin.new(external_payment_method_id, is_default, properties, "PayPal", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+      Killbill::Plugin::Model::PaymentMethodPlugin.new(external_payment_method_id,
+                                                       is_default,
+                                                       properties,
+                                                       nil,
+                                                       'PayPal',
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil,
+                                                       nil)
     end
 
     def to_payment_method_info_response
