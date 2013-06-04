@@ -6,6 +6,8 @@ module Killbill::PaypalExpress
                     :paypal_express_baid,
                     :paypal_express_token
 
+    alias_attribute :external_payment_method_id, :paypal_express_baid
+
     def self.from_kb_account_id(kb_account_id)
       find_all_by_kb_account_id_and_is_deleted(kb_account_id, false)
     end
@@ -32,10 +34,6 @@ module Killbill::PaypalExpress
     end
 
     def to_payment_method_response
-      external_payment_method_id = paypal_express_baid
-      # No concept of default payment method in Paypal Express
-      is_default = false
-
       properties = []
       properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerId', paypal_express_payer_id)
       properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'baid', paypal_express_baid)
@@ -60,11 +58,12 @@ module Killbill::PaypalExpress
     end
 
     def to_payment_method_info_response
-      external_payment_method_id = paypal_express_baid
-      # No concept of default payment method in Paypal Express
-      is_default = false
-
       Killbill::Plugin::Model::PaymentMethodInfoPlugin.new(kb_account_id, kb_payment_method_id, is_default, external_payment_method_id)
+    end
+
+    def is_default
+      # No concept of default payment method in Paypal Express
+      false
     end
   end
 end

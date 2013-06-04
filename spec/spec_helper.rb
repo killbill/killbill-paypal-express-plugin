@@ -1,6 +1,8 @@
 require 'bundler'
 require 'paypal_express'
 
+require 'logger'
+
 require 'rspec'
 
 RSpec.configure do |config|
@@ -11,8 +13,8 @@ end
 
 require 'active_record'
 ActiveRecord::Base.establish_connection(
-  :adapter => 'sqlite3',
-  :database => 'test.db'
+    :adapter => 'sqlite3',
+    :database => 'test.db'
 )
 # Create the schema
 require File.expand_path(File.dirname(__FILE__) + '../../db/schema.rb')

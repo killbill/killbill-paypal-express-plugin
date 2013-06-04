@@ -129,7 +129,40 @@ module Killbill::PaypalExpress
     end
 
     def reset_payment_methods(kb_account_id, payment_methods)
-      # No-op
+      return if payment_methods.nil?
+
+      paypal_pms = PaypalExpressPaymentMethod.from_kb_account_id(kb_account_id.to_s)
+
+      payment_methods.delete_if do |payment_method_info_plugin|
+        should_be_deleted = false
+        paypal_pms.each do |paypal_pm|
+          # Do paypal_pm and payment_method_info_plugin represent the same PayPal payment method?
+          if paypal_pm.external_payment_method_id == payment_method_info_plugin.external_payment_method_id
+            # Do we already have a kb_payment_method_id?
+            if paypal_pm.kb_payment_method_id == payment_method_info_plugin.payment_method_id.to_s
+              should_be_deleted = true
+              break
+            elsif paypal_pm.kb_payment_method_id.nil?
+              # We didn't have the kb_payment_method_id - update it
+              paypal_pm.kb_payment_method_id = payment_method_info_plugin.payment_method_id.to_s
+              should_be_deleted = paypal_pm.save
+              break
+              # Otherwise the same BAID points to 2 different kb_payment_method_id. This should never happen,
+              # but we cowardly will insert a second row below
+            end
+          end
+        end
+
+        should_be_deleted
+      end
+
+      # The remaining elements in payment_methods are not in our table (this should never happen?!)
+      payment_methods.each do |payment_method_info_plugin|
+        PaypalExpressPaymentMethod.create :kb_account_id => payment_method_info_plugin.account_id.to_s,
+                                          :kb_payment_method_id => payment_method_info_plugin.payment_method_id.to_s,
+                                          :paypal_express_baid => payment_method_info_plugin.external_payment_method_id,
+                                          :paypal_express_token => 'unknown (created by reset)'
+      end
     end
 
     private
