@@ -12,6 +12,9 @@ ActiveRecord::Schema.define(:version => 20130311153635) do
     t.datetime "updated_at",              :null => false
   end
 
+  add_index(:paypal_express_payment_methods, :kb_account_id)
+  add_index(:paypal_express_payment_methods, :kb_payment_method_id)
+
   create_table "paypal_express_transactions", :force => true do |t|
     t.integer  "paypal_express_response_id", :null => false
     t.string   "api_call",                   :null => false
@@ -21,6 +24,8 @@ ActiveRecord::Schema.define(:version => 20130311153635) do
     t.datetime "created_at",                 :null => false
     t.datetime "updated_at",                 :null => false
   end
+
+  add_index(:paypal_express_transactions, :kb_payment_id)
 
   create_table "paypal_express_responses", :force => true do |t|
     t.string   "api_call",        :null => false

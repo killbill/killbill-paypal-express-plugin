@@ -8,7 +8,9 @@ CREATE TABLE `paypal_express_payment_methods` (
   `is_deleted` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `index_paypal_express_payment_methods_on_kb_account_id` (`kb_account_id`),
+  KEY `index_paypal_express_payment_methods_on_kb_payment_method_id` (`kb_payment_method_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `paypal_express_transactions` (
@@ -20,7 +22,8 @@ CREATE TABLE `paypal_express_transactions` (
   `amount_in_cents` int(11) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `index_paypal_express_transactions_on_kb_payment_id` (`kb_payment_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `paypal_express_responses` (
