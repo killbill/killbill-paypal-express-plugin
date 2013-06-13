@@ -39,6 +39,23 @@ module Killbill::PaypalExpress
       properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'baid', paypal_express_baid)
       properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'token', paypal_express_token)
 
+      # We're pretty much guaranteed to have a (single) entry for details_for, since it was called during add_payment_method
+      details_for = PaypalExpressResponse.find_all_by_api_call_and_token('details_for', paypal_express_token).last
+      unless details_for.nil?
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerName', details_for.payer_name)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerEmail', details_for.payer_email)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerCountry', details_for.payer_country)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'contactPhone', details_for.contact_phone)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressName', details_for.ship_to_address_name)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressCompany', details_for.ship_to_address_company)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressAddress1', details_for.ship_to_address_address1)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressAddress2', details_for.ship_to_address_address2)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressCity', details_for.ship_to_address_city)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressState', details_for.ship_to_address_state)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressCountry', details_for.ship_to_address_country)
+        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressZip', details_for.ship_to_address_zip)
+      end
+
       Killbill::Plugin::Model::PaymentMethodPlugin.new(external_payment_method_id,
                                                        is_default,
                                                        properties,
