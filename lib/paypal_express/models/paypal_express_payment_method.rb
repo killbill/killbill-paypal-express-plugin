@@ -35,52 +35,57 @@ module Killbill::PaypalExpress
 
     def to_payment_method_response
       properties = []
-      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerId', paypal_express_payer_id)
-      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'baid', paypal_express_baid)
-      properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'token', paypal_express_token)
+      properties << create_pm_kv_info('payerId', paypal_express_payer_id)
+      properties << create_pm_kv_info('baid', paypal_express_baid)
+      properties << create_pm_kv_info('token', paypal_express_token)
 
       # We're pretty much guaranteed to have a (single) entry for details_for, since it was called during add_payment_method
       details_for = PaypalExpressResponse.find_all_by_api_call_and_token('details_for', paypal_express_token).last
       unless details_for.nil?
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerName', details_for.payer_name)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerEmail', details_for.payer_email)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'payerCountry', details_for.payer_country)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'contactPhone', details_for.contact_phone)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressName', details_for.ship_to_address_name)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressCompany', details_for.ship_to_address_company)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressAddress1', details_for.ship_to_address_address1)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressAddress2', details_for.ship_to_address_address2)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressCity', details_for.ship_to_address_city)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressState', details_for.ship_to_address_state)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressCountry', details_for.ship_to_address_country)
-        properties << Killbill::Plugin::Model::PaymentMethodKVInfo.new(false, 'shipToAddressZip', details_for.ship_to_address_zip)
+        properties << create_pm_kv_info('payerName', details_for.payer_name)
+        properties << create_pm_kv_info('payerEmail', details_for.payer_email)
+        properties << create_pm_kv_info('payerCountry', details_for.payer_country)
+        properties << create_pm_kv_info('contactPhone', details_for.contact_phone)
+        properties << create_pm_kv_info('shipToAddressName', details_for.ship_to_address_name)
+        properties << create_pm_kv_info('shipToAddressCompany', details_for.ship_to_address_company)
+        properties << create_pm_kv_info('shipToAddressAddress1', details_for.ship_to_address_address1)
+        properties << create_pm_kv_info('shipToAddressAddress2', details_for.ship_to_address_address2)
+        properties << create_pm_kv_info('shipToAddressCity', details_for.ship_to_address_city)
+        properties << create_pm_kv_info('shipToAddressState', details_for.ship_to_address_state)
+        properties << create_pm_kv_info('shipToAddressCountry', details_for.ship_to_address_country)
+        properties << create_pm_kv_info('shipToAddressZip', details_for.ship_to_address_zip)
       end
 
-      Killbill::Plugin::Model::PaymentMethodPlugin.new(external_payment_method_id,
-                                                       is_default,
-                                                       properties,
-                                                       nil,
-                                                       'PayPal',
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil,
-                                                       nil)
+      pm_plugin = Killbill::Plugin::Model::PaymentMethodPlugin.new
+      pm_plugin.external_payment_method_id = external_payment_method_id
+      pm_plugin.is_default_payment_method = is_default
+      pm_plugin.properties = properties
+      pm_plugin.type = 'PayPal'
+
+      pm_plugin
     end
 
     def to_payment_method_info_response
-      Killbill::Plugin::Model::PaymentMethodInfoPlugin.new(kb_account_id, kb_payment_method_id, is_default, external_payment_method_id)
+      pm_info_plugin = Killbill::Plugin::Model::PaymentMethodInfoPlugin.new
+      pm_info_plugin.account_id = kb_account_id
+      pm_info_plugin.payment_method_id = kb_payment_method_id
+      pm_info_plugin.is_default = is_default
+      pm_info_plugin.external_payment_method_id = external_payment_method_id
+      pm_info_plugin
     end
 
     def is_default
       # No concept of default payment method in Paypal Express
       false
+    end
+
+    private
+
+    def create_pm_kv_info(key, value)
+      prop = Killbill::Plugin::Model::PaymentMethodKVInfo.new
+      prop.key = key
+      prop.value = value
+      prop
     end
   end
 end

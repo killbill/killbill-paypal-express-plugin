@@ -45,9 +45,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     # Add some in KillBill and reset
     payment_methods = []
     # Random order... Shouldn't matter...
-    payment_methods << Killbill::Plugin::Model::PaymentMethodInfoPlugin.new(kb_account_id, 'kb-3', false, 'paypal-3')
-    payment_methods << Killbill::Plugin::Model::PaymentMethodInfoPlugin.new(kb_account_id, 'kb-2', false, 'paypal-2')
-    payment_methods << Killbill::Plugin::Model::PaymentMethodInfoPlugin.new(kb_account_id, 'kb-4', false, 'paypal-4')
+    payment_methods << create_pm_info_plugin(kb_account_id, 'kb-3', false, 'paypal-3')
+    payment_methods << create_pm_info_plugin(kb_account_id, 'kb-2', false, 'paypal-2')
+    payment_methods << create_pm_info_plugin(kb_account_id, 'kb-4', false, 'paypal-4')
     @plugin.reset_payment_methods kb_account_id, payment_methods
     verify_pms kb_account_id, 4
 
@@ -58,7 +58,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.get_payment_methods(kb_account_id, false, nil).size.should == 5
 
     # Verify we can match it
-    payment_methods << Killbill::Plugin::Model::PaymentMethodInfoPlugin.new(kb_account_id, 'kb-5', false, 'paypal-5')
+    payment_methods << create_pm_info_plugin(kb_account_id, 'kb-5', false, 'paypal-5')
     @plugin.reset_payment_methods kb_account_id, payment_methods
     verify_pms kb_account_id, 5
 
@@ -75,5 +75,14 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       pm.is_default.should == false
       pm.external_payment_method_id.should == 'paypal-' + pm.payment_method_id.split('-')[1]
     end
+  end
+
+  def create_pm_info_plugin(kb_account_id, kb_payment_method_id, is_default, external_payment_method_id)
+    pm_info_plugin = Killbill::Plugin::Model::PaymentMethodInfoPlugin.new
+    pm_info_plugin.account_id = kb_account_id
+    pm_info_plugin.payment_method_id = kb_payment_method_id
+    pm_info_plugin.is_default = is_default
+    pm_info_plugin.external_payment_method_id = external_payment_method_id
+    pm_info_plugin
   end
 end
