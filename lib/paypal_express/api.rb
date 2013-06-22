@@ -16,7 +16,9 @@ module Killbill::PaypalExpress
       ActiveRecord::Base.connection.close
     end
 
-    def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount_in_cents, currency, call_context = nil, options = {})
+    def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount, currency, call_context = nil, options = {})
+      amount_in_cents = (amount * 100).to_i
+
       # If the payment was already made, just return the status
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id) rescue nil
       return paypal_express_transaction.paypal_express_response.to_payment_response unless paypal_express_transaction.nil?
@@ -52,7 +54,9 @@ module Killbill::PaypalExpress
       end
     end
 
-    def process_refund(kb_account_id, kb_payment_id, amount_in_cents, currency, call_context = nil, options = {})
+    def process_refund(kb_account_id, kb_payment_id, amount, currency, call_context = nil, options = {})
+      amount_in_cents = (amount * 100).to_i
+
       paypal_express_transaction = PaypalExpressTransaction.find_candidate_transaction_for_refund(kb_payment_id, amount_in_cents)
 
       options[:currency] ||= currency.to_s

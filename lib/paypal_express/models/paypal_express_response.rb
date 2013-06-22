@@ -147,7 +147,7 @@ module Killbill::PaypalExpress
 
       if type == :payment
         p_info_plugin = Killbill::Plugin::Model::PaymentInfoPlugin.new
-        p_info_plugin.amount = amount_in_cents
+        p_info_plugin.amount = BigDecimal.new(amount_in_cents.to_s) / 100.0 if amount_in_cents
         p_info_plugin.created_date = created_date
         p_info_plugin.effective_date = effective_date
         p_info_plugin.status = (success ? :PROCESSED : :ERROR)
@@ -158,7 +158,7 @@ module Killbill::PaypalExpress
         p_info_plugin
       else
         r_info_plugin = Killbill::Plugin::Model::RefundInfoPlugin.new
-        r_info_plugin.amount = amount_in_cents
+        r_info_plugin.amount = BigDecimal.new(amount_in_cents.to_s) / 100.0 if amount_in_cents
         r_info_plugin.created_date = created_date
         r_info_plugin.effective_date = effective_date
         r_info_plugin.status = (success ? :PROCESSED : :ERROR)

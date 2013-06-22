@@ -1,5 +1,6 @@
 require 'active_record'
 require 'activemerchant'
+require 'bigdecimal'
 require 'pathname'
 require 'sinatra'
 require 'singleton'

@@ -22,12 +22,12 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   end
 
   it 'should be able to charge and refund' do
-    amount_in_cents = 10000
+    amount = 100
     currency = 'USD'
     kb_payment_id = SecureRandom.uuid
 
-    payment_response = @plugin.process_payment @pm.kb_account_id, kb_payment_id, @pm.kb_payment_method_id, amount_in_cents, currency
-    payment_response.amount.should == amount_in_cents
+    payment_response = @plugin.process_payment @pm.kb_account_id, kb_payment_id, @pm.kb_payment_method_id, amount, currency
+    payment_response.amount.should == amount
     payment_response.status.should == :PROCESSED
 
     # Verify our table directly
@@ -38,14 +38,14 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Check we can retrieve the payment
     payment_response = @plugin.get_payment_info @pm.kb_account_id, kb_payment_id
-    payment_response.amount.should == amount_in_cents
+    payment_response.amount.should == amount
     payment_response.status.should == :PROCESSED
 
     # Check we cannot refund an amount greater than the original charge
-    lambda { @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount_in_cents + 1, currency }.should raise_error RuntimeError
+    lambda { @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount + 1, currency }.should raise_error RuntimeError
 
-    refund_response = @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount_in_cents, currency
-    refund_response.amount.should == amount_in_cents
+    refund_response = @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount, currency
+    refund_response.amount.should == amount
     refund_response.status.should == :PROCESSED
 
     # Verify our table directly
@@ -55,19 +55,19 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Check we can retrieve the refund
     refund_response = @plugin.get_refund_info @pm.kb_account_id, kb_payment_id
-    refund_response.amount.should == (-1 * amount_in_cents)
+    refund_response.amount.should == (-1 * amount)
     refund_response.status.should == :PROCESSED
 
     # Try another payment to verify the BAID
-    second_amount_in_cents = 9423
+    second_amount = 94.23
     second_kb_payment_id = SecureRandom.uuid
-    payment_response = @plugin.process_payment @pm.kb_account_id, second_kb_payment_id, @pm.kb_payment_method_id, second_amount_in_cents, currency
-    payment_response.amount.should == second_amount_in_cents
+    payment_response = @plugin.process_payment @pm.kb_account_id, second_kb_payment_id, @pm.kb_payment_method_id, second_amount, currency
+    payment_response.amount.should == second_amount
     payment_response.status.should == :PROCESSED
 
     # Check we can refund it as well
-    refund_response = @plugin.process_refund @pm.kb_account_id, second_kb_payment_id, second_amount_in_cents, currency
-    refund_response.amount.should == second_amount_in_cents
+    refund_response = @plugin.process_refund @pm.kb_account_id, second_kb_payment_id, second_amount, currency
+    refund_response.amount.should == second_amount
     refund_response.status.should == :PROCESSED
 
     # it "should be able to create and retrieve payment methods"
