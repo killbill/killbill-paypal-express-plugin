@@ -33,6 +33,16 @@ module Killbill::PaypalExpress
       payment_method.save!
     end
 
+    def self.search(search_key)
+      search_columns = [
+                         :paypal_express_payer_id,
+                         :paypal_express_baid,
+                         :paypal_express_token
+                       ]
+      query = search_columns.map(&:to_s).join(' like ? or ') + ' like ?'
+      where(query, *search_columns.map { |e| "%#{search_key}%" })
+    end
+
     def to_payment_method_response
       properties = []
       properties << create_pm_kv_info('payerId', paypal_express_payer_id)

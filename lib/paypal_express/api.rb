@@ -169,6 +169,10 @@ module Killbill::PaypalExpress
       end
     end
 
+    def search(search_key, call_context = nil, options = {})
+      PaypalExpressPaymentMethod.search(search_key).map(&:to_payment_method_response)
+    end
+
     private
 
     def save_response_and_transaction(paypal_express_response, api_call, kb_payment_id=nil, amount_in_cents=0)
