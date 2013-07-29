@@ -67,6 +67,7 @@ module Killbill::PaypalExpress
       end
 
       pm_plugin = Killbill::Plugin::Model::PaymentMethodPlugin.new
+      pm_plugin.kb_payment_method_id = kb_payment_method_id
       pm_plugin.external_payment_method_id = external_payment_method_id
       pm_plugin.is_default_payment_method = is_default
       pm_plugin.properties = properties

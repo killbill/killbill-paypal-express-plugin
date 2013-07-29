@@ -80,7 +80,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     pm_details = @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id)
     pm_details.external_payment_method_id.should == @pm.paypal_express_baid
 
-    pms_found = @plugin.search @pm.paypal_express_baid
+    pms_found = @plugin.search_payment_methods @pm.paypal_express_baid
     pms_found.size.should == 1
     pms_found.first.external_payment_method_id.should == pm_details.external_payment_method_id
 
