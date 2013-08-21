@@ -1,3 +1,6 @@
+1.5.0
+    Update to latest killbill 1.6.0 (new entitlement apis)
+
 1.4.1
     Update to active_merchant 1.36.0 (no need for custom build anymore)
 
