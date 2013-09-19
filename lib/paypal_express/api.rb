@@ -44,14 +44,9 @@ module Killbill::PaypalExpress
     def get_payment_info(kb_account_id, kb_payment_id, tenant_context = nil, options = {})
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id)
 
-      begin
-        transaction_id = paypal_express_transaction.paypal_express_txn_id
-        response = @gateway.transaction_details transaction_id
-        PaypalExpressResponse.from_response(:transaction_details, kb_payment_id, response).to_payment_response
-      rescue => e
-        @logger.warn("Exception while retrieving Paypal Express transaction detail for payment #{kb_payment_id}, defaulting to cached response: #{e}")
-        paypal_express_transaction.paypal_express_response.to_payment_response
-      end
+      # We could also re-fetch it via: @gateway.transaction_details(transaction_id)
+      # but we would need to reconstruct the payment_info object
+      paypal_express_transaction.paypal_express_response.to_payment_response
     end
 
     def process_refund(kb_account_id, kb_payment_id, amount, currency, call_context = nil, options = {})
@@ -74,14 +69,9 @@ module Killbill::PaypalExpress
     def get_refund_info(kb_account_id, kb_payment_id, tenant_context = nil, options = {})
       paypal_express_transaction = PaypalExpressTransaction.refund_from_kb_payment_id(kb_payment_id)
 
-      begin
-        transaction_id = paypal_express_transaction.paypal_express_txn_id
-        response = @gateway.transaction_details transaction_id
-        PaypalExpressResponse.from_response(:transaction_details, kb_payment_id, response).to_refund_response
-      rescue => e
-        @logger.warn("Exception while retrieving Paypal Express transaction detail for payment #{kb_payment_id}, defaulting to cached response: #{e}")
-        paypal_express_transaction.paypal_express_response.to_refund_response
-      end
+      # We could also re-fetch it via: @gateway.transaction_details(transaction_id)
+      # but we would need to reconstruct the refund_info object
+      paypal_express_transaction.paypal_express_response.to_refund_response
     end
 
     def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default = false, call_context = nil, options = {})

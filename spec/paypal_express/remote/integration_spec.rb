@@ -22,7 +22,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   end
 
   it 'should be able to charge and refund' do
-    amount = 100
+    amount = BigDecimal.new("100")
     currency = 'USD'
     kb_payment_id = SecureRandom.uuid
 
@@ -38,6 +38,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Check we can retrieve the payment
     payment_response = @plugin.get_payment_info @pm.kb_account_id, kb_payment_id
+    payment_response.first_payment_reference_id.should_not be_nil
     payment_response.amount.should == amount
     payment_response.status.should == :PROCESSED
 
@@ -55,11 +56,11 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Check we can retrieve the refund
     refund_response = @plugin.get_refund_info @pm.kb_account_id, kb_payment_id
-    refund_response.amount.should == (-1 * amount)
+    refund_response.amount.should == amount
     refund_response.status.should == :PROCESSED
 
     # Try another payment to verify the BAID
-    second_amount = 94.23
+    second_amount = BigDecimal.new("94.23")
     second_kb_payment_id = SecureRandom.uuid
     payment_response = @plugin.process_payment @pm.kb_account_id, second_kb_payment_id, @pm.kb_payment_method_id, second_amount, currency
     payment_response.amount.should == second_amount
