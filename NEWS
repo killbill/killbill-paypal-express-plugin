@@ -1,3 +1,6 @@
+1.5.1
+    Fix bug in get_payment_info and get_refund_info
+
 1.5.0
     Update to latest killbill 1.6.0 (new entitlement apis)
 
