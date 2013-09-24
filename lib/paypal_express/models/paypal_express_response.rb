@@ -138,7 +138,7 @@ module Killbill::PaypalExpress
         amount_in_cents = paypal_express_transaction.amount_in_cents
         created_date = paypal_express_transaction.created_at
         first_payment_reference_id = paypal_express_transaction.paypal_express_txn_id
-        second_payment_reference_id = paypal_express_transaction.id.to_s
+        second_payment_reference_id = nil
       end
 
       effective_date = created_date
