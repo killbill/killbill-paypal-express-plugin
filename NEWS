@@ -1,3 +1,6 @@
+1.5.3
+    Fix issue #1
+
 1.5.2
     Don't populate the second_payment_reference_id (see killbill/killbill-analytics-plugin#11)
 
