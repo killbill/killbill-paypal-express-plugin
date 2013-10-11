@@ -31,7 +31,7 @@ module Killbill::PaypalExpress
 
       if options[:reference_id].blank?
         payment_method = PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id)
-        options[:reference_id] = payment_method.paypal_express_baid
+        options[:reference_id] = payment_method.paypal_express_baid unless payment_method.paypal_express_baid.nil?
       end
 
       # Go to Paypal (DoReferenceTransaction call)
