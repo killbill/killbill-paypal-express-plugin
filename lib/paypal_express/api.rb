@@ -31,7 +31,7 @@ module Killbill::PaypalExpress
 
       if options[:reference_id].blank?
         payment_method = PaypalExpressPaymentMethod.from_kb_payment_method_id(kb_payment_method_id)
-        options[:reference_id] = payment_method.paypal_express_baid unless payment_method.paypal_express_baid.nil?
+        options[:reference_id] = payment_method.paypal_express_baid
       end
 
       # Go to Paypal (DoReferenceTransaction call)
@@ -92,6 +92,13 @@ module Killbill::PaypalExpress
         paypal_express_baid_response = @gateway.store token
         response = save_response_and_transaction paypal_express_baid_response, :create_billing_agreement
         return false unless response.success?
+
+        if response.billing_agreement_id.blank?
+          # If the baid isn't specified (invalid token, maybe expired?), we won't be able to charge that payment method
+          # See https://github.com/killbill/killbill-paypal-express-plugin/issues/1
+          logger.warn "No BAID returned by the CreateBillingAgreement call for token #{token} (account #{kb_account_id})"
+          return false
+        end
 
         payment_method.kb_payment_method_id = kb_payment_method_id
         payment_method.paypal_express_payer_id = payer_id

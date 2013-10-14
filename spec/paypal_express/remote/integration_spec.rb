@@ -13,15 +13,45 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.logger = logger
 
     @plugin.start_plugin
-
-    @pm = create_payment_method
   end
 
   after(:each) do
     @plugin.stop_plugin
   end
 
+  it 'should be able to handle bad payment methods' do
+    amount = BigDecimal.new("100")
+    currency = 'USD'
+    kb_account_id = SecureRandom.uuid
+    kb_payment_id = SecureRandom.uuid
+    kb_payment_method_id = SecureRandom.uuid
+
+    # Create a dummy token (but never go to PayPal to validate it). This will create a dummy payment method, with no baid
+    token = create_token(kb_account_id).token
+
+    # Verify the add payment method call fails
+    pm_kv_info = Killbill::Plugin::Model::PaymentMethodKVInfo.new
+    pm_kv_info.key = 'token'
+    pm_kv_info.value = token
+    info = Killbill::Plugin::Model::PaymentMethodPlugin.new
+    info.properties = [pm_kv_info]
+    # Note: the call will fail because the payer_id is nil
+    # There is another failure scenario described by https://github.com/killbill/killbill-paypal-express-plugin/issues/1 when
+    # the CreateBillingAgreement fails. We cannot easily reproduce it though unfortunately
+    @plugin.add_payment_method(kb_account_id, kb_payment_method_id, info).should be_false
+
+    # Update the payment method (still without a baid) with a dummy kb_payment_method_id
+    # This should never happen though
+    payment_method = Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token).update_attribute(:kb_payment_method_id, kb_payment_method_id)
+
+    # Attempt a payment - verify the call goes through, without throwing an exception (invalid state, but we still want PAYMENT_FAILURE, not PLUGIN_FAILURE)
+    payment_response = @plugin.process_payment kb_account_id, kb_payment_id, kb_payment_method_id, amount, currency
+    payment_response.status.should == :ERROR
+  end
+
   it 'should be able to charge and refund' do
+    @pm = create_payment_method
+
     amount = BigDecimal.new("100")
     currency = 'USD'
     kb_payment_id = SecureRandom.uuid
@@ -93,13 +123,18 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
   private
 
-  def create_payment_method
-    kb_account_id = SecureRandom.uuid
+  def create_token(kb_account_id)
     private_plugin = Killbill::PaypalExpress::PrivatePaymentPlugin.instance
-
-    # Initiate the setup process
     response = private_plugin.initiate_express_checkout kb_account_id
     response.success.should be_true
+    response
+  end
+
+  def create_payment_method
+    kb_account_id = SecureRandom.uuid
+
+    # Initiate the setup process
+    response = create_token(kb_account_id)
     token = response.token
 
     print "\nPlease go to #{response.to_express_checkout_url} to proceed and press any key to continue...
