@@ -40,7 +40,12 @@ module Killbill::PaypalExpress
                          :paypal_express_token
                        ]
       query = search_columns.map(&:to_s).join(' like ? or ') + ' like ?'
-      where(query, *search_columns.map { |e| "%#{search_key}%" })
+
+      # Creating a payment method is a two-step process. We first create a placeholder during the SetExpressCheckout call, which
+      # doesn't have a kb_payment_method_id (nor a paypal_express_payer_id). During the CreateBillingAgreement call, both attributes
+      # will be populated, as well as the baid. If the second step is never completed, the payment method placeholder is garbage and
+      # we want to ignore it.
+      where(query, *search_columns.map { |e| "%#{search_key}%" }).where('kb_payment_method_id is not NULL')
     end
 
     def to_payment_method_response
