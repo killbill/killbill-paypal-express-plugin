@@ -9,7 +9,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.conf_dir = File.expand_path(File.dirname(__FILE__) + '../../../../')
 
     logger = Logger.new(STDOUT)
-    logger.level = Logger::DEBUG
+    logger.level = Logger::INFO
     @plugin.logger = logger
 
     @plugin.start_plugin
