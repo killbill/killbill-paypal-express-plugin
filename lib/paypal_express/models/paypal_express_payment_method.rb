@@ -33,19 +33,31 @@ module Killbill::PaypalExpress
       payment_method.save!
     end
 
-    def self.search(search_key)
+    def self.search(search_key, offset = 0, limit = 100)
       search_columns = [
                          :paypal_express_payer_id,
                          :paypal_express_baid,
                          :paypal_express_token
                        ]
       query = search_columns.map(&:to_s).join(' like ? or ') + ' like ?'
+      query = "(#{query}) and kb_payment_method_id is not NULL"
 
-      # Creating a payment method is a two-step process. We first create a placeholder during the SetExpressCheckout call, which
-      # doesn't have a kb_payment_method_id (nor a paypal_express_payer_id). During the CreateBillingAgreement call, both attributes
-      # will be populated, as well as the baid. If the second step is never completed, the payment method placeholder is garbage and
-      # we want to ignore it.
-      where(query, *search_columns.map { |e| "%#{search_key}%" }).where('kb_payment_method_id is not NULL')
+      pagination = Killbill::Plugin::Model::Pagination.new
+      pagination.current_offset = offset
+      pagination.total_nb_records = self.where(query, *search_columns.map { |e| "%#{search_key}%" }).count
+      pagination.max_nb_records = self.where('kb_payment_method_id is not NULL').count
+      pagination.next_offset = (!pagination.total_nb_records.nil? && offset + limit >= pagination.total_nb_records) ? nil : offset + limit
+      pagination.iterator = StreamyResultSet.new(limit) do |offset,limit|
+        # Creating a payment method is a two-step process. We first create a placeholder during the SetExpressCheckout call, which
+        # doesn't have a kb_payment_method_id (nor a paypal_express_payer_id). During the CreateBillingAgreement call, both attributes
+        # will be populated, as well as the baid. If the second step is never completed, the payment method placeholder is garbage and
+        # we want to ignore it.
+        self.where(query, *search_columns.map { |e| "%#{search_key}%" })
+            .order("id ASC")
+            .offset(offset)
+            .limit(limit)
+      end
+      pagination
     end
 
     def to_payment_method_response
