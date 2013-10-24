@@ -29,7 +29,11 @@ module Killbill::PaypalExpress
       (0..(@limit - @batch)).step(@batch) do |i|
         result = @delegate.call(i, @batch)
         block.call(result)
+        # Optimization: bail out if no more results
+        break if result.nil? || result.empty?
       end
+      # Make sure to return DB connections to the Pool
+      ActiveRecord::Base.connection.close
     end
 
     def to_a
