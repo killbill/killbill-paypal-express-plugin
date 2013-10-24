@@ -82,6 +82,6 @@ CREATE TABLE `paypal_express_responses` (
   `success` tinyint(1) DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
   KEY `index_paypal_express_responses_on_token_and_api_call` (`token`, `api_call`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
