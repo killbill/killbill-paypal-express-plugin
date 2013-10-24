@@ -47,7 +47,9 @@ module Killbill::PaypalExpress
       pagination.total_nb_records = self.where(query, *search_columns.map { |e| "%#{search_key}%" }).count
       pagination.max_nb_records = self.where('kb_payment_method_id is not NULL').count
       pagination.next_offset = (!pagination.total_nb_records.nil? && offset + limit >= pagination.total_nb_records) ? nil : offset + limit
-      pagination.iterator = StreamyResultSet.new(limit) do |offset,limit|
+      # Reduce the limit if the specified value is larger than the number of records
+      actual_limit = [pagination.max_nb_records, limit].min
+      pagination.iterator = StreamyResultSet.new(actual_limit) do |offset,limit|
         # Creating a payment method is a two-step process. We first create a placeholder during the SetExpressCheckout call, which
         # doesn't have a kb_payment_method_id (nor a paypal_express_payer_id). During the CreateBillingAgreement call, both attributes
         # will be populated, as well as the baid. If the second step is never completed, the payment method placeholder is garbage and
@@ -56,6 +58,7 @@ module Killbill::PaypalExpress
             .order("id ASC")
             .offset(offset)
             .limit(limit)
+            .map(&:to_payment_method_response)
       end
       pagination
     end
