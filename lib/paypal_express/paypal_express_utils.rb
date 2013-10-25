@@ -31,7 +31,7 @@ module Killbill::PaypalExpress
         block.call(result)
         # Optimization: bail out if no more results
         break if result.nil? || result.empty?
-      end
+      end if @batch > 0
       # Make sure to return DB connections to the Pool
       ActiveRecord::Base.connection.close
     end

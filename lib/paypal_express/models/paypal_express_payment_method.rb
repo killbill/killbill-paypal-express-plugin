@@ -33,31 +33,49 @@ module Killbill::PaypalExpress
       payment_method.save!
     end
 
-    def self.search(search_key, offset = 0, limit = 100)
-      search_columns = [
-                         :paypal_express_payer_id,
-                         :paypal_express_baid,
-                         :paypal_express_token
-                       ]
-      query = search_columns.map(&:to_s).join(' like ? or ') + ' like ?'
-      query = "(#{query}) and kb_payment_method_id is not NULL"
+    # VisibleForTesting
+    def self.search_query(search_key, offset = nil, limit = nil)
+      t = self.arel_table
+      tr = PaypalExpressResponse.arel_table
 
+      # Note 1: Exact match for ids and email, partial match for name
+      # Note 2: Creating a payment method is a two-step process. We first create a placeholder during the SetExpressCheckout call, which
+      # doesn't have a kb_payment_method_id (nor a paypal_express_payer_id). During the CreateBillingAgreement call, both attributes
+      # will be populated, as well as the baid. If the second step is never completed, the payment method placeholder is garbage and
+      # we want to ignore it.
+      query = t.join(tr, Arel::Nodes::OuterJoin).on(     tr[:api_call].eq('details_for')
+                                                    .and(tr[:success].eq(true))
+                                                    .and(tr[:token].eq(t[:paypal_express_token])))
+               .where(    t[:paypal_express_payer_id].eq(search_key)
+                      .or(t[:paypal_express_baid].eq(search_key))
+                      .or(t[:paypal_express_token].eq(search_key))
+                      .or(tr[:payer_email].eq(search_key))
+                      .or(tr[:payer_name].matches("%#{search_key}%")))
+               .where(t[:kb_payment_method_id].not_eq(nil))
+               .order(t[:id])
+      if offset.blank? and limit.blank?
+        # true is for count distinct
+        query.project(t[:id].count(true))
+      else
+        query.skip(offset) unless offset.blank?
+        query.take(limit) unless limit.blank?
+        query.project(t[Arel.star])
+        # Not chainable
+        query.distinct
+      end
+      query
+    end
+
+    def self.search(search_key, offset = 0, limit = 100)
       pagination = Killbill::Plugin::Model::Pagination.new
       pagination.current_offset = offset
-      pagination.total_nb_records = self.where(query, *search_columns.map { |e| "%#{search_key}%" }).count
+      pagination.total_nb_records = self.count_by_sql(self.search_query(search_key))
       pagination.max_nb_records = self.where('kb_payment_method_id is not NULL').count
       pagination.next_offset = (!pagination.total_nb_records.nil? && offset + limit >= pagination.total_nb_records) ? nil : offset + limit
       # Reduce the limit if the specified value is larger than the number of records
       actual_limit = [pagination.max_nb_records, limit].min
       pagination.iterator = StreamyResultSet.new(actual_limit) do |offset,limit|
-        # Creating a payment method is a two-step process. We first create a placeholder during the SetExpressCheckout call, which
-        # doesn't have a kb_payment_method_id (nor a paypal_express_payer_id). During the CreateBillingAgreement call, both attributes
-        # will be populated, as well as the baid. If the second step is never completed, the payment method placeholder is garbage and
-        # we want to ignore it.
-        self.where(query, *search_columns.map { |e| "%#{search_key}%" })
-            .order("id ASC")
-            .offset(offset)
-            .limit(limit)
+        self.find_by_sql(self.search_query(search_key, offset, limit))
             .map(&:to_payment_method_response)
       end
       pagination
