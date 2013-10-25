@@ -1,6 +1,7 @@
 1.6.0
     Add pagination support for search
     Improve search algorithm
+    Allow setting of default payment description in configuration file
 
 1.5.4
     Fix issue #1

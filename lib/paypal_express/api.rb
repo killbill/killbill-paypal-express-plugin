@@ -26,7 +26,7 @@ module Killbill::PaypalExpress
       options[:currency] ||= currency.to_s
       options[:payment_type] ||= 'Any'
       options[:invoice_id] ||= kb_payment_id
-      options[:description] ||= "Kill Bill payment for #{kb_payment_id}"
+      options[:description] ||= Killbill::PaypalExpress.paypal_payment_description || "Kill Bill payment for #{kb_payment_id}"
       options[:ip] ||= @ip
 
       if options[:reference_id].blank?
