@@ -26,7 +26,7 @@ module Killbill::PaypalExpress
       options[:currency] ||= currency.to_s
       options[:payment_type] ||= 'Any'
       options[:invoice_id] ||= kb_payment_id
-      options[:description] ||= "Kill Bill payment for #{kb_payment_id}"
+      options[:description] ||= Killbill::PaypalExpress.paypal_payment_description || "Kill Bill payment for #{kb_payment_id}"
       options[:ip] ||= @ip
 
       if options[:reference_id].blank?
@@ -166,8 +166,8 @@ module Killbill::PaypalExpress
       end
     end
 
-    def search_payment_methods(search_key, call_context = nil, options = {})
-      PaypalExpressPaymentMethod.search(search_key).map(&:to_payment_method_response)
+    def search_payment_methods(search_key, offset = 0, limit = 100, call_context = nil, options = {})
+      PaypalExpressPaymentMethod.search(search_key, offset, limit)
     end
 
     private

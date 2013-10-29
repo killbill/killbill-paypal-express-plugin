@@ -9,7 +9,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.conf_dir = File.expand_path(File.dirname(__FILE__) + '../../../../')
 
     logger = Logger.new(STDOUT)
-    logger.level = Logger::DEBUG
+    logger.level = Logger::INFO
     @plugin.logger = logger
 
     @plugin.start_plugin
@@ -112,6 +112,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     pm_details.external_payment_method_id.should == @pm.paypal_express_baid
 
     pms_found = @plugin.search_payment_methods @pm.paypal_express_baid
+    pms_found = pms_found.iterator.to_a
     pms_found.size.should == 1
     pms_found.first.external_payment_method_id.should == pm_details.external_payment_method_id
 

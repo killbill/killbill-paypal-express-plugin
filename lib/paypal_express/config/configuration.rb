@@ -6,6 +6,7 @@ module Killbill::PaypalExpress
   mattr_reader :gateway
   mattr_reader :paypal_sandbox_url
   mattr_reader :paypal_production_url
+  mattr_reader :paypal_payment_description
   mattr_reader :initialized
   mattr_reader :test
 
@@ -16,9 +17,12 @@ module Killbill::PaypalExpress
     @@config = Properties.new(config_file)
     @@config.parse!
 
+    @@logger.log_level = Logger::DEBUG if (@@config[:logger] || {})[:debug]
+
     @@paypal_sandbox_url = @@config[:paypal][:sandbox_url] || 'https://www.sandbox.paypal.com/cgi-bin/webscr'
     @@paypal_production_url = @@config[:paypal][:production_url] || 'https://www.paypal.com/cgi-bin/webscr'
     @@test = @@config[:paypal][:test]
+    @@paypal_payment_description = @@config[:paypal][:payment_description]
 
     @@gateway = Killbill::PaypalExpress::Gateway.instance
     @@gateway.configure(@@config[:paypal])
@@ -30,6 +34,7 @@ module Killbill::PaypalExpress
     end
 
     ActiveRecord::Base.establish_connection(@@config[:database])
+    ActiveRecord::Base.logger = @@logger
 
     @@initialized = true
   end
