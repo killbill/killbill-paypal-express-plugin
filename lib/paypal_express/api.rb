@@ -23,7 +23,10 @@ module Killbill::PaypalExpress
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id) rescue nil
       return paypal_express_transaction.paypal_express_response.to_payment_response unless paypal_express_transaction.nil?
 
-      options[:currency] ||= currency.to_s
+      # Check for currency conversion
+      actual_amount, actual_currency = convert_amount_currency_if_required(amount_in_cents, currency, kb_payment_id)
+
+      options[:currency] ||= actual_currency.to_s
       options[:payment_type] ||= 'Any'
       options[:invoice_id] ||= kb_payment_id
       options[:description] ||= Killbill::PaypalExpress.paypal_payment_description || "Kill Bill payment for #{kb_payment_id}"
@@ -34,8 +37,6 @@ module Killbill::PaypalExpress
         options[:reference_id] = payment_method.paypal_express_baid
       end
 
-      # Check for currency conversion
-      actual_amount, actual_currency = convert_amount_currency_if_required(amount_in_cents, currency, kb_payment_id)
 
       # Go to Paypal (DoReferenceTransaction call)
       paypal_response = @gateway.reference_transaction actual_amount, options
@@ -55,15 +56,15 @@ module Killbill::PaypalExpress
     def process_refund(kb_account_id, kb_payment_id, amount, currency, call_context = nil, options = {})
       amount_in_cents = (amount * 100).to_i
 
-      paypal_express_transaction = PaypalExpressTransaction.find_candidate_transaction_for_refund(kb_payment_id, amount_in_cents)
-
-      options[:currency] ||= currency.to_s
-      options[:refund_type] ||= paypal_express_transaction.amount_in_cents != amount_in_cents ? 'Partial' : 'Full'
-
-      identification = paypal_express_transaction.paypal_express_txn_id
-
       # Check for currency conversion
       actual_amount, actual_currency = convert_amount_currency_if_required(amount_in_cents, currency, kb_payment_id)
+
+      paypal_express_transaction = PaypalExpressTransaction.find_candidate_transaction_for_refund(kb_payment_id, actual_amount)
+
+      options[:currency] ||= actual_currency.to_s
+      options[:refund_type] ||= paypal_express_transaction.amount_in_cents != actual_amount ? 'Partial' : 'Full'
+
+      identification = paypal_express_transaction.paypal_express_txn_id
 
       # Go to Paypal
       paypal_response = @gateway.refund actual_amount, identification, options
@@ -185,15 +186,15 @@ module Killbill::PaypalExpress
 
       kb_payment = @kb_apis.payment_api.get_payment(kb_payment_id, false, @kb_apis.create_context)
 
-      currency_conversion = @kb_apis.currency_conversion_api.get_currency_conversion(input_currency, kb_payment.effective_date)
+      currency_conversion = @kb_apis.currency_conversion_api.get_currency_conversion(converted_currency, kb_payment.effective_date)
       rates = currency_conversion.rates
       found = rates.select do |r|
-        r.currency.to_s.upcase.to_sym == converted_currency.to_s.upcase.to_sym
+        r.currency.to_s.upcase.to_sym == input_currency.to_s.upcase.to_sym
       end
 
       if found.nil? || found.empty?
         @logger.warn "Failed to find converted currency #{converted_currency} for input currency #{input_currency}"
-        return [input_amount, input_currency] if converted_currency.nil?
+        return [input_amount, input_currency]
       end
 
       # conversion rounding ?
