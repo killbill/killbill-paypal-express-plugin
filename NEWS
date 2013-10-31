@@ -1,3 +1,6 @@
+1.6.3
+    Fix bugs for currency conversion during payment/refunds
+
 1.6.2
     Add implementation for currency conversion
 
