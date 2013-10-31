@@ -2,6 +2,7 @@ module Killbill::PaypalExpress
   class PaypalExpressTransaction < ActiveRecord::Base
     belongs_to :paypal_express_response
     attr_accessible :amount_in_cents,
+                    :currency,
                     :api_call,
                     :kb_payment_id,
                     :paypal_express_txn_id

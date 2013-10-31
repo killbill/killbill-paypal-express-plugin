@@ -34,9 +34,12 @@ module Killbill::PaypalExpress
         options[:reference_id] = payment_method.paypal_express_baid
       end
 
+      # Check for currency conversion
+      actual_amount, actual_currency = convert_amount_currency_if_required(amount_in_cents, currency, kb_payment_id)
+
       # Go to Paypal (DoReferenceTransaction call)
-      paypal_response = @gateway.reference_transaction amount_in_cents, options
-      response = save_response_and_transaction paypal_response, :charge, kb_payment_id, amount_in_cents
+      paypal_response = @gateway.reference_transaction actual_amount, options
+      response = save_response_and_transaction paypal_response, :charge, kb_payment_id, actual_amount, actual_currency
 
       response.to_payment_response
     end
@@ -59,9 +62,12 @@ module Killbill::PaypalExpress
 
       identification = paypal_express_transaction.paypal_express_txn_id
 
+      # Check for currency conversion
+      actual_amount, actual_currency = convert_amount_currency_if_required(amount_in_cents, currency, kb_payment_id)
+
       # Go to Paypal
-      paypal_response = @gateway.refund amount_in_cents, identification, options
-      response = save_response_and_transaction paypal_response, :refund, kb_payment_id, amount_in_cents
+      paypal_response = @gateway.refund actual_amount, identification, options
+      response = save_response_and_transaction paypal_response, :refund, kb_payment_id, actual_amount, actual_currency
 
       response.to_refund_response
     end
@@ -172,7 +178,31 @@ module Killbill::PaypalExpress
 
     private
 
-    def save_response_and_transaction(paypal_express_response, api_call, kb_payment_id=nil, amount_in_cents=0)
+    def convert_amount_currency_if_required(input_amount, input_currency, kb_payment_id)
+
+      converted_currency = Killbill::PaypalExpress.converted_currency(input_currency)
+      return [input_amount, input_currency] if converted_currency.nil?
+
+      kb_payment = @kb_apis.payment_api.get_payment(kb_payment_id, false, @kb_apis.create_context)
+
+      currency_conversion = @kb_apis.currency_conversion_api.get_currency_conversion(input_currency, kb_payment.effective_date)
+      rates = currency_conversion.rates
+      found = rates.select do |r|
+        r.currency.to_s.upcase.to_sym == converted_currency.to_s.upcase.to_sym
+      end
+
+      if found.nil? || found.empty?
+        @logger.warn "Failed to find converted currency #{converted_currency} for input currency #{input_currency}"
+        return [input_amount, input_currency] if converted_currency.nil?
+      end
+
+      # conversion rounding ?
+      conversion_rate = found[0].value
+      output_amount =  input_amount * conversion_rate
+      return [output_amount.to_i, converted_currency]
+    end
+
+    def save_response_and_transaction(paypal_express_response, api_call, kb_payment_id=nil, amount_in_cents=0, currency=nil)
       @logger.warn "Unsuccessful #{api_call}: #{paypal_express_response.message}" unless paypal_express_response.success?
 
       # Save the response to our logs
@@ -181,7 +211,11 @@ module Killbill::PaypalExpress
 
       if response.success and !kb_payment_id.blank? and !response.authorization.blank?
         # Record the transaction
-        transaction = response.create_paypal_express_transaction!(:amount_in_cents => amount_in_cents, :api_call => api_call, :kb_payment_id => kb_payment_id, :paypal_express_txn_id => response.authorization)
+        transaction = response.create_paypal_express_transaction!(:amount_in_cents => amount_in_cents,
+                                                                  :currency => currency,
+                                                                  :api_call => api_call,
+                                                                  :kb_payment_id => kb_payment_id,
+                                                                  :paypal_express_txn_id => response.authorization)
         @logger.debug "Recorded transaction: #{transaction.inspect}"
       end
       response

@@ -7,6 +7,7 @@ module Killbill::PaypalExpress
   mattr_reader :paypal_sandbox_url
   mattr_reader :paypal_production_url
   mattr_reader :paypal_payment_description
+  mattr_reader :currency_conversions
   mattr_reader :initialized
   mattr_reader :test
 
@@ -27,6 +28,8 @@ module Killbill::PaypalExpress
     @@gateway = Killbill::PaypalExpress::Gateway.instance
     @@gateway.configure(@@config[:paypal])
 
+    @@currency_conversions = @@config[:currency_conversions]
+
     if defined?(JRUBY_VERSION)
       # See https://github.com/jruby/activerecord-jdbc-adapter/issues/302
       require 'jdbc/mysql'
@@ -38,4 +41,10 @@ module Killbill::PaypalExpress
 
     @@initialized = true
   end
+
+  def self.converted_currency(currency)
+    currency_sym = currency.to_s.upcase.to_sym
+    @@currency_conversions && @@currency_conversions[currency_sym]
+  end
+
 end
