@@ -1,3 +1,6 @@
+1.6.4
+    Update to latest killbill (1.9.0)
+
 1.6.3
     Fix bugs for currency conversion during payment/refunds
 
