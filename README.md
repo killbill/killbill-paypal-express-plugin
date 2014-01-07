@@ -6,6 +6,9 @@ killbill-paypal-express-plugin
 
 Plugin to use Express Checkout as a gateway.
 
+Release builds are available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22com.ning.killbill.ruby%22%20AND%20a%3A%22paypal-express-plugin%22) with coordinates `com.ning.killbill.ruby:paypal-express-plugin`.
+
+
 Usage
 -----
 
