@@ -125,6 +125,50 @@ module Killbill::PaypalExpress
       to_killbill_response :refund
     end
 
+    # VisibleForTesting
+    def self.search_query(search_key, offset = nil, limit = nil)
+      t = self.arel_table
+
+      # Exact matches only
+      where_clause =     t[:authorization].eq(search_key)
+                     .or(t[:billing_agreement_id].eq(search_key))
+                     .or(t[:payment_info_transactionid].eq(search_key))
+
+      # Only search successful payments and refunds
+      where_clause = where_clause.and((t[:api_call].eq('charge')).or(t[:api_call].eq('refund')))
+                                 .and(t[:success].eq(true))
+
+      query = t.where(where_clause)
+               .order(t[:id])
+
+      if offset.blank? and limit.blank?
+        # true is for count distinct
+        query.project(t[:id].count(true))
+      else
+        query.skip(offset) unless offset.blank?
+        query.take(limit) unless limit.blank?
+        query.project(t[Arel.star])
+        # Not chainable
+        query.distinct
+      end
+      query
+    end
+
+    def self.search(search_key, offset = 0, limit = 100, type = :payment)
+      pagination = Killbill::Plugin::Model::Pagination.new
+      pagination.current_offset = offset
+      pagination.total_nb_records = self.count_by_sql(self.search_query(search_key))
+      pagination.max_nb_records = self.count
+      pagination.next_offset = (!pagination.total_nb_records.nil? && offset + limit >= pagination.total_nb_records) ? nil : offset + limit
+      # Reduce the limit if the specified value is larger than the number of records
+      actual_limit = [pagination.max_nb_records, limit].min
+      pagination.iterator = StreamyResultSet.new(actual_limit) do |offset,limit|
+        self.find_by_sql(self.search_query(search_key, offset, limit))
+            .map(&(type == :payment ? :to_payment_response : :to_refund_response))
+      end
+      pagination
+    end
+
     private
 
     def to_killbill_response(type)
