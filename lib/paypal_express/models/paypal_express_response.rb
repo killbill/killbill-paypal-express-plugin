@@ -159,7 +159,7 @@ module Killbill::PaypalExpress
       pagination = Killbill::Plugin::Model::Pagination.new
       pagination.current_offset = offset
       pagination.total_nb_records = self.count_by_sql(self.search_query(api_call, search_key))
-      pagination.max_nb_records = self.count
+      pagination.max_nb_records = self.where(:api_call => api_call, :success => true).count
       pagination.next_offset = (!pagination.total_nb_records.nil? && offset + limit >= pagination.total_nb_records) ? nil : offset + limit
       # Reduce the limit if the specified value is larger than the number of records
       actual_limit = [pagination.max_nb_records, limit].min
