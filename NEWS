@@ -1,5 +1,6 @@
 1.6.5
     Implement payments search
+    Fix amount to cents conversion
 
 1.6.4
     Update to latest killbill (1.9.0)

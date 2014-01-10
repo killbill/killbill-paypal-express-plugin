@@ -173,8 +173,8 @@ module Killbill::PaypalExpress
 
     def to_killbill_response(type)
       if paypal_express_transaction.nil?
-        # payment_info_grossamount is e.g. "100.00" - we need to convert it in cents
-        amount_in_cents = payment_info_grossamount ? (payment_info_grossamount.to_f * 100).to_i : nil
+        # payment_info_grossamount may have a value but we cannot convert it to cents since we don't have the currency
+        amount_in_cents = nil
         currency = nil
         created_date = created_at
         first_payment_reference_id = nil
@@ -193,7 +193,7 @@ module Killbill::PaypalExpress
 
       if type == :payment
         p_info_plugin = Killbill::Plugin::Model::PaymentInfoPlugin.new
-        p_info_plugin.amount = BigDecimal.new(amount_in_cents.to_s) / 100.0 if amount_in_cents
+        p_info_plugin.amount = Money.new(amount_in_cents, currency).to_d if currency
         p_info_plugin.currency = currency
         p_info_plugin.created_date = created_date
         p_info_plugin.effective_date = effective_date
@@ -205,7 +205,7 @@ module Killbill::PaypalExpress
         p_info_plugin
       else
         r_info_plugin = Killbill::Plugin::Model::RefundInfoPlugin.new
-        r_info_plugin.amount = BigDecimal.new(amount_in_cents.to_s) / 100.0 if amount_in_cents
+        r_info_plugin.amount = Money.new(amount_in_cents, currency).to_d if currency
         r_info_plugin.currency = currency
         r_info_plugin.created_date = created_date
         r_info_plugin.effective_date = effective_date

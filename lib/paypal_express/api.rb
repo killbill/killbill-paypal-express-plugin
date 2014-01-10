@@ -17,7 +17,8 @@ module Killbill::PaypalExpress
     end
 
     def process_payment(kb_account_id, kb_payment_id, kb_payment_method_id, amount, currency, call_context = nil, options = {})
-      amount_in_cents = (amount * 100).to_i
+      # Use Money to compute the amount in cents, as it depends on the currency (1 cent of BTC is 1 Satoshi, not 0.01 BTC)
+      amount_in_cents = Money.new_with_amount(amount, currency).cents.to_i
 
       # If the payment was already made, just return the status
       paypal_express_transaction = PaypalExpressTransaction.from_kb_payment_id(kb_payment_id) rescue nil
@@ -54,7 +55,8 @@ module Killbill::PaypalExpress
     end
 
     def process_refund(kb_account_id, kb_payment_id, amount, currency, call_context = nil, options = {})
-      amount_in_cents = (amount * 100).to_i
+      # Use Money to compute the amount in cents, as it depends on the currency (1 cent of BTC is 1 Satoshi, not 0.01 BTC)
+      amount_in_cents = Money.new_with_amount(amount, currency).cents.to_i
 
       # Check for currency conversion
       actual_amount, actual_currency = convert_amount_currency_if_required(amount_in_cents, currency, kb_payment_id)
