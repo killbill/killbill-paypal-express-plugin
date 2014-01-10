@@ -126,7 +126,7 @@ module Killbill::PaypalExpress
     end
 
     # VisibleForTesting
-    def self.search_query(search_key, offset = nil, limit = nil)
+    def self.search_query(api_call, search_key, offset = nil, limit = nil)
       t = self.arel_table
 
       # Exact matches only
@@ -135,7 +135,7 @@ module Killbill::PaypalExpress
                      .or(t[:payment_info_transactionid].eq(search_key))
 
       # Only search successful payments and refunds
-      where_clause = where_clause.and((t[:api_call].eq('charge')).or(t[:api_call].eq('refund')))
+      where_clause = where_clause.and(t[:api_call].eq(api_call))
                                  .and(t[:success].eq(true))
 
       query = t.where(where_clause)
@@ -155,16 +155,17 @@ module Killbill::PaypalExpress
     end
 
     def self.search(search_key, offset = 0, limit = 100, type = :payment)
+      api_call = type == :payment ? 'charge' : 'refund'
       pagination = Killbill::Plugin::Model::Pagination.new
       pagination.current_offset = offset
-      pagination.total_nb_records = self.count_by_sql(self.search_query(search_key))
+      pagination.total_nb_records = self.count_by_sql(self.search_query(api_call, search_key))
       pagination.max_nb_records = self.count
       pagination.next_offset = (!pagination.total_nb_records.nil? && offset + limit >= pagination.total_nb_records) ? nil : offset + limit
       # Reduce the limit if the specified value is larger than the number of records
       actual_limit = [pagination.max_nb_records, limit].min
       pagination.iterator = StreamyResultSet.new(actual_limit) do |offset,limit|
-        self.find_by_sql(self.search_query(search_key, offset, limit))
-            .map(&(type == :payment ? :to_payment_response : :to_refund_response))
+        self.find_by_sql(self.search_query(api_call, search_key, offset, limit))
+            .map { |x| type == :payment ? x.to_payment_response : x.to_refund_response }
       end
       pagination
     end
@@ -193,6 +194,7 @@ module Killbill::PaypalExpress
 
       if type == :payment
         p_info_plugin = Killbill::Plugin::Model::PaymentInfoPlugin.new
+        p_info_plugin.kb_payment_id = kb_payment_id
         p_info_plugin.amount = Money.new(amount_in_cents, currency).to_d if currency
         p_info_plugin.currency = currency
         p_info_plugin.created_date = created_date

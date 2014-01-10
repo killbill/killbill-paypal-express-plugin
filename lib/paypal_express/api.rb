@@ -176,7 +176,7 @@ module Killbill::PaypalExpress
     end
 
     def search_payments(search_key, offset = 0, limit = 100, call_context = nil, options = {})
-      PaypalExpressResponse.search(search_key, offset, limit)
+      PaypalExpressResponse.search(search_key, offset, limit, :payment)
     end
 
     def search_payment_methods(search_key, offset = 0, limit = 100, call_context = nil, options = {})
