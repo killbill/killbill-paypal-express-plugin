@@ -85,9 +85,10 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     response.success.should be_true
 
     # Check we can retrieve the refund
-    refund_response = @plugin.get_refund_info @pm.kb_account_id, kb_payment_id
-    refund_response.amount.should == amount
-    refund_response.status.should == :PROCESSED
+    refund_responses = @plugin.get_refund_info @pm.kb_account_id, kb_payment_id
+    refund_responses.size.should == 1
+    refund_responses[0].amount.should == amount
+    refund_responses[0].status.should == :PROCESSED
 
     # Try another payment to verify the BAID
     second_amount = BigDecimal.new("94.23")

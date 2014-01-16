@@ -76,11 +76,11 @@ module Killbill::PaypalExpress
     end
 
     def get_refund_info(kb_account_id, kb_payment_id, tenant_context = nil, options = {})
-      paypal_express_transaction = PaypalExpressTransaction.refund_from_kb_payment_id(kb_payment_id)
+      paypal_express_transactions = PaypalExpressTransaction.refunds_from_kb_payment_id(kb_payment_id)
 
       # We could also re-fetch it via: @gateway.transaction_details(transaction_id)
       # but we would need to reconstruct the refund_info object
-      paypal_express_transaction.paypal_express_response.to_refund_response
+      paypal_express_transactions.map { |t| t.paypal_express_response.to_refund_response }
     end
 
     def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default = false, call_context = nil, options = {})
