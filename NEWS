@@ -1,3 +1,6 @@
+1.6.6
+    Fix packaging
+
 1.6.5
     Implement payments and refunds search
     Fix amount to cents conversion
