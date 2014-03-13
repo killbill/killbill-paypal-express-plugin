@@ -1,3 +1,7 @@
+1.7.0
+    Update to latest killbill
+    Change groupId to org.kill-bill.billing.plugin.ruby
+
 1.6.7
     Add jruby-openssl dependency
 

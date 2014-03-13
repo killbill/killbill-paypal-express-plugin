@@ -25,7 +25,7 @@
     <groupId>org.kill-bill.billing.plugin.ruby</groupId>
     <artifactId>paypal-express-plugin</artifactId>
     <packaging>pom</packaging>
-    <version>1.6.7</version>
+    <version>1.7.0</version>
     <name>paypal-express-plugin</name>
     <url>http://github.com/killbill/killbill-paypal-express-plugin</url>
     <description>Plugin for accessing paypal as a payment gateway</description>
