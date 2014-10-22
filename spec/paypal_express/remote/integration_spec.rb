@@ -1,165 +1,146 @@
 require 'spec_helper'
-require 'logger'
 
 ActiveMerchant::Billing::Base.mode = :test
 
 describe Killbill::PaypalExpress::PaymentPlugin do
-  before(:each) do
+
+  include ::Killbill::Plugin::ActiveMerchant::RSpec
+
+  # Share the BAID
+  before(:all) do
     @plugin = Killbill::PaypalExpress::PaymentPlugin.new
-    @plugin.conf_dir = File.expand_path(File.dirname(__FILE__) + '../../../../')
 
-    logger = Logger.new(STDOUT)
-    logger.level = Logger::INFO
-    @plugin.logger = logger
+    @payment_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaPaymentApi.new
+    @account_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaUserAccountApi.new
+    svcs            = {:account_user_api => @account_api, :payment_api => @payment_api}
+    @plugin.kb_apis = Killbill::Plugin::KillbillApi.new('paypal-express', svcs)
 
+    @call_context           = ::Killbill::Plugin::Model::CallContext.new
+    @call_context.tenant_id = '00000011-0022-0033-0044-000000000055'
+    @call_context           = @call_context.to_ruby(@call_context)
+
+    @plugin.logger       = Logger.new(STDOUT)
+    @plugin.logger.level = Logger::INFO
+    @plugin.conf_dir     = File.expand_path(File.dirname(__FILE__) + '../../../../')
     @plugin.start_plugin
+
+    @properties = []
+    @amount     = BigDecimal.new('100')
+    @currency   = 'USD'
+
+    kb_account_id               = SecureRandom.uuid
+    external_key, kb_account_id = create_kb_account(kb_account_id)
+
+    # Initiate the setup process
+    response                    = create_token(kb_account_id, @call_context.tenant_id)
+    token                       = response.token
+    print "\nPlease go to #{@plugin.to_express_checkout_url(response)} to proceed and press any key to continue...
+Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
+    $stdin.gets
+
+    # Complete the setup process
+    @properties << create_pm_kv_info('token', token)
+    @pm             = create_payment_method(::Killbill::PaypalExpress::PaypalExpressPaymentMethod, kb_account_id, @call_context.tenant_id, @properties)
+
+    # Verify our table directly. Note that @pm.token is the baid
+    payment_methods = ::Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(@pm.token, kb_account_id, @call_context.tenant_id)
+    payment_methods.size.should == 1
+    payment_method = payment_methods.first
+    payment_method.should_not be_nil
+    payment_method.paypal_express_payer_id.should_not be_nil
+    payment_method.token.should == @pm.token
+    payment_method.kb_payment_method_id.should == @pm.kb_payment_method_id
+  end
+
+  before(:each) do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.delete_all
+    ::Killbill::PaypalExpress::PaypalExpressResponse.delete_all
+
+    kb_payment_id = SecureRandom.uuid
+    1.upto(6) do
+      @kb_payment = @payment_api.add_payment(kb_payment_id)
+    end
   end
 
   after(:each) do
     @plugin.stop_plugin
   end
 
-  it 'should be able to handle bad payment methods' do
-    amount = BigDecimal.new("100")
-    currency = 'USD'
-    kb_account_id = SecureRandom.uuid
-    kb_payment_id = SecureRandom.uuid
-    kb_payment_method_id = SecureRandom.uuid
+  it 'should be able to charge and refund' do
+    payment_response = @plugin.purchase_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :PURCHASE
 
-    # Create a dummy token (but never go to PayPal to validate it). This will create a dummy payment method, with no baid
-    token = create_token(kb_account_id).token
-
-    # Verify the add payment method call fails
-    pm_kv_info = Killbill::Plugin::Model::PaymentMethodKVInfo.new
-    pm_kv_info.key = 'token'
-    pm_kv_info.value = token
-    info = Killbill::Plugin::Model::PaymentMethodPlugin.new
-    info.properties = [pm_kv_info]
-    # Note: the call will fail because the payer_id is nil
-    # There is another failure scenario described by https://github.com/killbill/killbill-paypal-express-plugin/issues/1 when
-    # the CreateBillingAgreement fails. We cannot easily reproduce it though unfortunately
-    @plugin.add_payment_method(kb_account_id, kb_payment_method_id, info).should be_false
-
-    # Update the payment method (still without a baid) with a dummy kb_payment_method_id
-    # This should never happen though
-    payment_method = Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token).update_attribute(:kb_payment_method_id, kb_payment_method_id)
-
-    # Attempt a payment - verify the call goes through, without throwing an exception (invalid state, but we still want PAYMENT_FAILURE, not PLUGIN_FAILURE)
-    payment_response = @plugin.process_payment kb_account_id, kb_payment_id, kb_payment_method_id, amount, currency
-    payment_response.status.should == :ERROR
+    # Try a full refund
+    refund_response = @plugin.refund_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
+    refund_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    refund_response.amount.should == @amount
+    refund_response.transaction_type.should == :REFUND
   end
 
-  it 'should be able to charge and refund' do
-    @pm = create_payment_method
+  it 'should be able to auth, capture and refund' do
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
 
-    amount = BigDecimal.new("100")
-    currency = 'USD'
-    kb_payment_id = SecureRandom.uuid
+    # Try multiple partial captures
+    partial_capture_amount = BigDecimal.new('10')
+    1.upto(3) do |i|
+      payment_response = @plugin.capture_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[i].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
+      payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+      payment_response.amount.should == partial_capture_amount
+      payment_response.transaction_type.should == :CAPTURE
+    end
 
-    payment_response = @plugin.process_payment @pm.kb_account_id, kb_payment_id, @pm.kb_payment_method_id, amount, currency
-    payment_response.amount.should == amount
-    payment_response.status.should == :PROCESSED
+    # Try a partial refund
+    refund_response = @plugin.refund_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[4].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
+    refund_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    refund_response.amount.should == partial_capture_amount
+    refund_response.transaction_type.should == :REFUND
 
-    # Verify our table directly
-    response = Killbill::PaypalExpress::PaypalExpressResponse.find_by_api_call_and_kb_payment_id :charge, kb_payment_id
-    response.test.should be_true
-    response.success.should be_true
-    response.message.should == 'Success'
+    # Try to capture again
+    payment_response = @plugin.capture_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[5].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == partial_capture_amount
+    payment_response.transaction_type.should == :CAPTURE
+  end
 
-    # Check we can retrieve the payment
-    payment_response = @plugin.get_payment_info @pm.kb_account_id, kb_payment_id
-    payment_response.first_payment_reference_id.should_not be_nil
-    payment_response.amount.should == amount
-    payment_response.status.should == :PROCESSED
+  it 'should be able to auth and void' do
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
 
-    # Check we cannot refund an amount greater than the original charge
-    lambda { @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount + 1, currency }.should raise_error RuntimeError
+    payment_response = @plugin.void_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.transaction_type.should == :VOID
+  end
 
-    refund_response = @plugin.process_refund @pm.kb_account_id, kb_payment_id, amount, currency
-    refund_response.amount.should == amount
-    refund_response.status.should == :PROCESSED
+  it 'should be able to auth, partial capture and void' do
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
 
-    # Verify our table directly
-    response = Killbill::PaypalExpress::PaypalExpressResponse.find_by_api_call_and_kb_payment_id :refund, kb_payment_id
-    response.test.should be_true
-    response.success.should be_true
+    partial_capture_amount = BigDecimal.new('10')
+    payment_response       = @plugin.capture_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == partial_capture_amount
+    payment_response.transaction_type.should == :CAPTURE
 
-    # Check we can retrieve the refund
-    refund_responses = @plugin.get_refund_info @pm.kb_account_id, kb_payment_id
-    refund_responses.size.should == 1
-    refund_responses[0].amount.should == amount
-    refund_responses[0].status.should == :PROCESSED
-
-    # Try another payment to verify the BAID
-    second_amount = BigDecimal.new("94.23")
-    second_kb_payment_id = SecureRandom.uuid
-    payment_response = @plugin.process_payment @pm.kb_account_id, second_kb_payment_id, @pm.kb_payment_method_id, second_amount, currency
-    payment_response.amount.should == second_amount
-    payment_response.status.should == :PROCESSED
-
-    # Check we can refund it as well
-    refund_response = @plugin.process_refund @pm.kb_account_id, second_kb_payment_id, second_amount, currency
-    refund_response.amount.should == second_amount
-    refund_response.status.should == :PROCESSED
-
-    # it "should be able to create and retrieve payment methods"
-    # This should be in a separate scenario but since it's so hard to create a payment method (need manual intervention),
-    # we can't easily delete it
-    pms = @plugin.get_payment_methods @pm.kb_account_id, false
-    pms.size.should == 1
-    pms[0].external_payment_method_id.should == @pm.paypal_express_baid
-
-    pm_details = @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id)
-    pm_details.external_payment_method_id.should == @pm.paypal_express_baid
-
-    pms_found = @plugin.search_payment_methods @pm.paypal_express_baid
-    pms_found = pms_found.iterator.to_a
-    pms_found.size.should == 1
-    pms_found.first.external_payment_method_id.should == pm_details.external_payment_method_id
-
-    @plugin.delete_payment_method @pm.kb_account_id, @pm.kb_payment_method_id
-
-    @plugin.get_payment_methods(@pm.kb_account_id, false).size.should == 0
-    lambda { @plugin.get_payment_method_detail(@pm.kb_account_id, @pm.kb_payment_method_id) }.should raise_error RuntimeError
+    payment_response = @plugin.void_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[2].id, @pm.kb_payment_method_id, @properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.transaction_type.should == :VOID
   end
 
   private
 
-  def create_token(kb_account_id)
-    private_plugin = Killbill::PaypalExpress::PrivatePaymentPlugin.instance
-    response = private_plugin.initiate_express_checkout kb_account_id
+  def create_token(kb_account_id, kb_tenant_id)
+    private_plugin = ::Killbill::PaypalExpress::PrivatePaymentPlugin.new
+    response       = private_plugin.initiate_express_checkout(kb_account_id, kb_tenant_id)
     response.success.should be_true
     response
-  end
-
-  def create_payment_method
-    kb_account_id = SecureRandom.uuid
-
-    # Initiate the setup process
-    response = create_token(kb_account_id)
-    token = response.token
-
-    print "\nPlease go to #{response.to_express_checkout_url} to proceed and press any key to continue...
-Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
-    $stdin.gets
-
-    # Complete the setup process
-    kb_payment_method_id = SecureRandom.uuid
-    pm_kv_info = Killbill::Plugin::Model::PaymentMethodKVInfo.new
-    pm_kv_info.key = 'token'
-    pm_kv_info.value = token
-    info = Killbill::Plugin::Model::PaymentMethodPlugin.new
-    info.properties = [pm_kv_info]
-    response = @plugin.add_payment_method kb_account_id, kb_payment_method_id, info, true
-    response.should be_true
-
-    # Verify our table directly
-    payment_method = Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(kb_account_id, token)
-    payment_method.should_not be_nil
-    payment_method.paypal_express_payer_id.should_not be_nil
-    payment_method.paypal_express_baid.should_not be_nil
-    payment_method.kb_payment_method_id.should == kb_payment_method_id
-
-    payment_method
   end
 end

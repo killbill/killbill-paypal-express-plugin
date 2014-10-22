@@ -1,4 +1,4 @@
 require 'paypal_express'
-require 'paypal_express/config/application'
+require 'paypal_express/application'
 
 run Sinatra::Application

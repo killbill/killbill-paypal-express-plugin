@@ -1,36 +1,64 @@
 require 'active_record'
 
-ActiveRecord::Schema.define(:version => 20130311153635) do
+ActiveRecord::Schema.define(:version => 20140410153635) do
   create_table "paypal_express_payment_methods", :force => true do |t|
-    t.string   "kb_account_id",           :null => false
-    t.string   "kb_payment_method_id"     # NULL before Killbill knows about it
+    t.string   "kb_payment_method_id"     # NULL before Kill Bill knows about it
     t.string   "paypal_express_payer_id"  # NULL before the express checkout is completed
-    t.string   "paypal_express_baid"      # NULL before the express checkout is completed
     t.string   "paypal_express_token",    :null => false, :unique => true
-    t.boolean  "is_deleted",              :null => false, :default => false
-    t.datetime "created_at",              :null => false
-    t.datetime "updated_at",              :null => false
+    t.string   "token"                    # paypal-express baid, NULL before the express checkout is completed
+    t.string   "cc_first_name"
+    t.string   "cc_last_name"
+    t.string   "cc_type"
+    t.integer  "cc_exp_month"
+    t.integer  "cc_exp_year"
+    t.integer  "cc_number"
+    t.integer  "cc_last_4"
+    t.integer  "cc_start_month"
+    t.integer  "cc_start_year"
+    t.integer  "cc_issue_number"
+    t.integer  "cc_verification_value"
+    t.integer  "cc_track_data"
+    t.string   "address1"
+    t.string   "address2"
+    t.string   "city"
+    t.string   "state"
+    t.string   "zip"
+    t.string   "country"
+    t.boolean  "is_deleted",               :null => false, :default => false
+    t.datetime "created_at",               :null => false
+    t.datetime "updated_at",               :null => false
+    t.string   "kb_account_id"
+    t.string   "kb_tenant_id"
   end
 
   add_index(:paypal_express_payment_methods, :kb_account_id)
   add_index(:paypal_express_payment_methods, :kb_payment_method_id)
 
   create_table "paypal_express_transactions", :force => true do |t|
-    t.integer  "paypal_express_response_id", :null => false
-    t.string   "api_call",                   :null => false
-    t.string   "kb_payment_id",              :null => false
-    t.string   "paypal_express_txn_id",      :null => false
-    t.integer  "amount_in_cents",            :null => false
-    t.string  "currency",                    :null => false
-    t.datetime "created_at",                 :null => false
-    t.datetime "updated_at",                 :null => false
+    t.integer  "paypal_express_response_id",  :null => false
+    t.string   "api_call",                       :null => false
+    t.string   "kb_payment_id",                  :null => false
+    t.string   "kb_payment_transaction_id",      :null => false
+    t.string   "transaction_type",               :null => false
+    t.string   "payment_processor_account_id"
+    t.string   "txn_id"                          # paypal-express transaction id
+    # Both null for void
+    t.integer  "amount_in_cents"
+    t.string   "currency"
+    t.datetime "created_at",                     :null => false
+    t.datetime "updated_at",                     :null => false
+    t.string   "kb_account_id",                  :null => false
+    t.string   "kb_tenant_id",                   :null => false
   end
 
   add_index(:paypal_express_transactions, :kb_payment_id)
 
   create_table "paypal_express_responses", :force => true do |t|
-    t.string   "api_call",        :null => false
+    t.string   "api_call",          :null => false
     t.string   "kb_payment_id"
+    t.string   "kb_payment_transaction_id"
+    t.string   "transaction_type"
+    t.string   "payment_processor_account_id"
     t.string   "message"
     t.string   "authorization"
     t.boolean  "fraud_review"
@@ -83,7 +111,7 @@ ActiveRecord::Schema.define(:version => 20130311153635) do
     t.boolean  "success"
     t.datetime "created_at",        :null => false
     t.datetime "updated_at",        :null => false
+    t.string   "kb_account_id"
+    t.string   "kb_tenant_id"
   end
-
-  add_index(:paypal_express_responses, [:token, :api_call])
 end

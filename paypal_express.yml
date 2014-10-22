@@ -1,0 +1,22 @@
+:paypal_express:
+  :signature: XXXX
+  :login: YYYY
+  :password: ZZZZ
+  :test: true
+  :log_file: /var/tmp/paypal_express.log
+
+:database:
+  :adapter: sqlite3
+  :database: test.db
+# For MySQL
+#  :adapter: 'jdbcmysql'
+#  :username: 'killbill'
+#  :password: 'killbill'
+#  :driver: 'com.mysql.jdbc.Driver'
+#  :url: 'jdbc:mysql://127.0.0.1:3306/killbill'
+# In Kill Bill
+#  :adapter: 'jdbcmysql'
+#  :jndi: 'killbill/osgi/jdbc'
+#  :driver: 'com.mysql.jdbc.Driver'
+#  :connection_alive_sql: 'select 1'
+#  :pool: 250

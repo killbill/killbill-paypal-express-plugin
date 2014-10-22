@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 ~ Copyright 2010-2013 Ning, Inc.
+~ Copyright 2014 The Billing Project, LLC
 ~
-~  Ning licenses this file to you under the Apache License, version 2.0
+~  The Billing Project licenses this file to you under the Apache License, version 2.0
 ~  (the "License"); you may not use this file except in compliance with the
 ~  License.  You may obtain a copy of the License at:
 ~
@@ -28,7 +29,7 @@
     <version>1.7.0</version>
     <name>paypal-express-plugin</name>
     <url>http://github.com/killbill/killbill-paypal-express-plugin</url>
-    <description>Plugin for accessing paypal as a payment gateway</description>
+    <description>Plugin for accessing Paypal Express Checkout as a payment gateway</description>
     <licenses>
         <license>
             <name>Apache License 2.0</name>

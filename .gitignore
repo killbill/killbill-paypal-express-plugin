@@ -27,13 +27,10 @@ Gemfile.lock
 # Build directory
 killbill-paypal-express/
 
-# Config file
-paypal_express.yml
-
 # Testing database
 test.db
 
 target
 pom.xml.asc
 
-.idea
+.idea/
