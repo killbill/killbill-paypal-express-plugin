@@ -72,7 +72,7 @@ Configuration
 The plugin expects a `paypal_express.yml` configuration file containing the following:
 
 ```
-:paypal:
+:paypal_express:
   :signature: 'your-paypal-signature'
   :login: 'your-username-facilitator.something.com'
   :password: 'your-password'
