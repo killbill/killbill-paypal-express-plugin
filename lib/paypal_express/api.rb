@@ -113,7 +113,8 @@ module Killbill #:nodoc:
       end
 
       def add_payment_method(kb_account_id, kb_payment_method_id, payment_method_props, set_default, properties, context)
-        token = find_value_from_properties(properties, 'token')
+        # token is passed from the json body and not from the query params
+        token = (payment_method_props.properties.find { |kv| kv.key == 'token' }).value
         return false if token.nil?
 
         # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
