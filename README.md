@@ -31,10 +31,15 @@ curl -v \
      -d ':paypal_express:
   :signature: "your-paypal-signature"
   :login: "your-username-facilitator.something.com"
-  :password: "your-password"
-  # Switch to false for production
-  :test: true' \
+  :password: "your-password"' \
      http://127.0.0.1:8080/1.0/kb/tenants/uploadPluginConfig/killbill-paypal-express
+```
+
+To go to production, create a `paypal_express.yml` configuration file under `/var/tmp/bundles/plugins/ruby/killbill-paypal-express/x.y.z/` containing the following:
+
+```
+:paypal_express:
+  :test: false
 ```
 
 Usage
@@ -45,8 +50,12 @@ Issue the following call to generate a Paypal token:
 ```
 curl -v \
      -X POST \
-     -H "Content-Type: application/json" \
-     --data-binary '{
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     -d '{
        "kb_account_id": "13d26090-b8d7-11e2-9e96-0800200c9a66",
        "currency": "USD",
        "options": {
@@ -57,7 +66,7 @@ curl -v \
          }
        }
      }' \
-     "http://$HOST:8080/plugins/killbill-paypal-express/1.0/setup-checkout"
+     http://127.0.0.1:8080/plugins/killbill-paypal-express/1.0/setup-checkout
 ```
 
 Kill Bill will return a 302 Found on success. The customer should be redirected to the url specified in the Location header, e.g. https://www.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-20G53990M6953444J.
@@ -67,10 +76,12 @@ Once the customer comes back from the PayPal flow, save the BAID in Kill Bill:
 ```
 curl -v \
      -X POST \
-     -H "Content-Type: application/json" \
-     -H "X-Killbill-CreatedBy: Web server" \
-     -H "X-Killbill-Reason: New account" \
-     --data-binary '{
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     -d '{
        "pluginName": "killbill-paypal-express",
        "pluginInfo": {
          "properties": [{
@@ -79,12 +90,15 @@ curl -v \
          }]
        }
      }' \
-     "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?isDefault=true"
+     "http://127.0.0.1:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?isDefault=true"
 ```
 
 To display the payment method details for that account, one can call:
 
 ```
 curl -v \
-     "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'Accept: application/json' \
+     "http://127.0.0.1:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
 ```
