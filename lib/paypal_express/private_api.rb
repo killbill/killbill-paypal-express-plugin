@@ -24,15 +24,16 @@ module Killbill #:nodoc:
         options[:billing_agreement][:description] ||= 'Kill Bill billing agreement'
 
         # Go to Paypal (SetExpressCheckout call)
-        paypal_express_response                   = gateway.setup_authorization(amount_in_cents, options)
+        payment_processor_account_id              = options[:payment_processor_account_id] || :default
+        paypal_express_response                   = gateway(payment_processor_account_id, kb_tenant_id).setup_authorization(amount_in_cents, options)
         response, transaction                     = save_response_and_transaction(paypal_express_response, :initiate_express_checkout, kb_account_id, kb_tenant_id, payment_processor_account_id)
 
         response
       end
 
-      def to_express_checkout_url(response, options = {})
+      def to_express_checkout_url(response, kb_tenant_id = nil, options = {})
         payment_processor_account_id = options[:payment_processor_account_id] || :default
-        gateway                      = gateway(payment_processor_account_id)
+        gateway                      = gateway(payment_processor_account_id, kb_tenant_id)
         gateway.redirect_url_for(response.token)
       end
     end

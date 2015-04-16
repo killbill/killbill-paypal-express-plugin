@@ -130,7 +130,7 @@ module Killbill #:nodoc:
         # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
         options                      = properties_to_hash(properties)
         payment_processor_account_id = options[:payment_processor_account_id] || :default
-        gateway                      = lookup_gateway(payment_processor_account_id)
+        gateway                      = lookup_gateway(payment_processor_account_id, context.tenant_id)
         gw_response                  = gateway.details_for(token)
         response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, context.tenant_id, payment_processor_account_id)
         return false unless response.success? and !response.payer_id.blank?
@@ -213,9 +213,9 @@ module Killbill #:nodoc:
         end
       end
 
-      def to_express_checkout_url(response, options = {})
+      def to_express_checkout_url(response, kb_tenant_id, options = {})
         payment_processor_account_id = options[:payment_processor_account_id] || :default
-        gateway                      = lookup_gateway(payment_processor_account_id)
+        gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
         gateway.redirect_url_for(response.token)
       end
 

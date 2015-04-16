@@ -60,16 +60,19 @@ post '/plugins/killbill-paypal-express/1.0/setup-checkout', :provides => 'json' 
     halt 400, {'Content-Type' => 'text/plain'}, "Invalid payload: #{e}"
   end
 
+  kb_tenant_id = data['kb_tenant_id'] || request.env['killbill_tenant'].id.to_s
+  options = (data['options'] || {}).deep_symbolize_keys
+
   response = plugin.initiate_express_checkout data['kb_account_id'],
-                                              data['kb_tenant_id'],
+                                              kb_tenant_id,
                                               data['amount_in_cents'] || 0,
                                               data['currency'] || 'USD',
-                                              (data['options'] || {}).deep_symbolize_keys
+                                              options
   unless response.success?
     status 500
     response.message
   else
-    redirect plugin.to_express_checkout_url(response)
+    redirect plugin.to_express_checkout_url(response, kb_tenant_id, options)
   end
 end
 
