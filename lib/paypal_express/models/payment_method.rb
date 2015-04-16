@@ -21,9 +21,9 @@ module Killbill #:nodoc:
       def to_payment_method_plugin
         pm_plugin = super
 
-        pm_plugin.properties << create_pm_kv_info('paypalExpressToken', paypal_express_token)
-        pm_plugin.properties << create_pm_kv_info('payerId', paypal_express_payer_id)
-        pm_plugin.properties << create_pm_kv_info('baid', token)
+        pm_plugin.properties << create_plugin_property('paypalExpressToken', paypal_express_token)
+        pm_plugin.properties << create_plugin_property('payerId', paypal_express_payer_id)
+        pm_plugin.properties << create_plugin_property('baid', token)
 
         pm_plugin
       end
