@@ -1,6 +1,3 @@
-[![Build Status](https://travis-ci.org/killbill/killbill-paypal-express-plugin.png)](https://travis-ci.org/killbill/killbill-paypal-express-plugin)
-[![Code Climate](https://codeclimate.com/github/killbill/killbill-paypal-express-plugin.png)](https://codeclimate.com/github/killbill/killbill-paypal-express-plugin)
-
 killbill-paypal-express-plugin
 ==============================
 
@@ -8,6 +5,17 @@ Plugin to use Express Checkout as a gateway.
 
 Release builds are available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.kill-bill.billing.plugin.ruby%22%20AND%20a%3A%22paypal-express-plugin%22) with coordinates `org.kill-bill.billing.plugin.ruby:paypal-express-plugin`.
 
+Kill Bill compatibility
+-----------------------
+
+| Plugin version | Kill Bill version |
+| -------------: | ----------------: |
+| 2.x.y          | 0.14.z            |
+
+Requirements
+------------
+
+The plugin needs a database. The latest version of the schema can be found [here](https://github.com/killbill/killbill-paypal-express-plugin/blob/master/db/ddl.sql).
 
 Usage
 -----
@@ -60,11 +68,6 @@ To display the payment method details for that account, one can call:
 curl -v \
      "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
 ```
-
-Requirements
-------------
-
-The plugin needs a database. The latest version of the schema can be found here: https://raw.github.com/killbill/killbill-paypal-express-plugin/master/db/ddl.sql.
 
 Configuration
 -------------
