@@ -22,4 +22,3 @@ require 'paypal_express/private_api'
 require 'paypal_express/models/payment_method'
 require 'paypal_express/models/response'
 require 'paypal_express/models/transaction'
-

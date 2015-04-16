@@ -10,9 +10,11 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   before(:all) do
     @plugin = Killbill::PaypalExpress::PaymentPlugin.new
 
-    @payment_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaPaymentApi.new
     @account_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaUserAccountApi.new
-    svcs            = {:account_user_api => @account_api, :payment_api => @payment_api}
+    @payment_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaPaymentApi.new
+    @tenant_api     = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaTenantUserApi.new({})
+
+    svcs            = {:account_user_api => @account_api, :payment_api => @payment_api, :tenant_user_api => @tenant_api}
     @plugin.kb_apis = Killbill::Plugin::KillbillApi.new('paypal-express', svcs)
 
     @call_context           = ::Killbill::Plugin::Model::CallContext.new
@@ -22,6 +24,8 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.logger       = Logger.new(STDOUT)
     @plugin.logger.level = Logger::INFO
     @plugin.conf_dir     = File.expand_path(File.dirname(__FILE__) + '../../../../')
+    @plugin.root         = '/foo/killbill-paypal-express/0.0.1'
+
     @plugin.start_plugin
 
     @properties = []
@@ -74,7 +78,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
 
     # Try a full refund
     refund_response = @plugin.refund_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
-    refund_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    refund_response.status.should eq(:PROCESSED), refund_response.gateway_error
     refund_response.amount.should == @amount
     refund_response.transaction_type.should == :REFUND
   end
@@ -96,7 +100,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
 
     # Try a partial refund
     refund_response = @plugin.refund_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[4].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
-    refund_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    refund_response.status.should eq(:PROCESSED), refund_response.gateway_error
     refund_response.amount.should == partial_capture_amount
     refund_response.transaction_type.should == :REFUND
 

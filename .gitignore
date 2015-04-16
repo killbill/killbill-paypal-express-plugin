@@ -19,8 +19,6 @@ _yardoc
 doc/
 
 .jbundler
-Jarfile.lock
-Gemfile.lock
 
 .DS_Store
 
@@ -30,7 +28,11 @@ killbill-paypal-express/
 # Testing database
 test.db
 
+paypal_express.log
+
 target
 pom.xml.asc
 
 .idea/
+
+Gemfile.head.lock

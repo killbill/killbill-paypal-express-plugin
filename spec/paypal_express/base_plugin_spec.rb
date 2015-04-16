@@ -22,6 +22,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       @plugin.logger.level = Logger::INFO
       @plugin.conf_dir     = File.dirname(file)
       @plugin.kb_apis      = Killbill::Plugin::KillbillApi.new('paypal_express', {})
+      @plugin.root         = '/foo/killbill-paypal_express/0.0.1'
 
       # Start the plugin here - since the config file will be deleted
       @plugin.start_plugin
