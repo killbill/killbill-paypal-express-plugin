@@ -17,6 +17,26 @@ Requirements
 
 The plugin needs a database. The latest version of the schema can be found [here](https://github.com/killbill/killbill-paypal-express-plugin/blob/master/db/ddl.sql).
 
+Configuration
+-------------
+
+```
+curl -v \
+     -X POST \
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: text/plain' \
+     -d ':paypal_express:
+  :signature: "your-paypal-signature"
+  :login: "your-username-facilitator.something.com"
+  :password: "your-password"
+  # Switch to false for production
+  :test: true' \
+     http://127.0.0.1:8080/1.0/kb/tenants/uploadPluginConfig/killbill-paypal-express
+```
+
 Usage
 -----
 
@@ -68,31 +88,3 @@ To display the payment method details for that account, one can call:
 curl -v \
      "http://$HOST:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
 ```
-
-Configuration
--------------
-
-The plugin expects a `paypal_express.yml` configuration file containing the following:
-
-```
-:paypal_express:
-  :signature: 'your-paypal-signature'
-  :login: 'your-username-facilitator.something.com'
-  :password: 'your-password'
-  :log_file: '/var/tmp/paypal.log'
-  # Switch to false for production
-  :test: true
-
-:database:
-  :adapter: 'sqlite3'
-  :database: 'test.db'
-# For MySQL
-#  :adapter: 'jdbc'
-#  :username: 'your-username'
-#  :password: 'your-password'
-#  :driver: 'com.mysql.jdbc.Driver'
-#  :url: 'jdbc:mysql://127.0.0.1:3306/your-database'
-```
-
-By default, the plugin will look at the plugin directory root (where `killbill.properties` is located) to find this file.
-Alternatively, set the Kill Bill system property `-Dorg.killbill.billing.osgi.bundles.jruby.conf.dir=/my/directory` to specify another location.
