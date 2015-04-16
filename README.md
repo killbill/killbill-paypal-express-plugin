@@ -97,6 +97,7 @@ To display the payment method details for that account, one can call:
 
 ```
 curl -v \
+     -u admin:password \
      -H 'X-Killbill-ApiKey: bob' \
      -H 'X-Killbill-ApiSecret: lazar' \
      -H 'Accept: application/json' \
