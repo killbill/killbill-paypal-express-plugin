@@ -125,7 +125,7 @@ module Killbill #:nodoc:
         token = find_value_from_properties(properties, 'token')
         # token is passed from the json body
         token = find_value_from_properties(payment_method_props.properties, 'token') if token.nil?
-        return false if token.nil?
+        raise 'No token specified!' if token.nil?
 
         # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
         options                      = properties_to_hash(properties)
@@ -133,7 +133,7 @@ module Killbill #:nodoc:
         gateway                      = lookup_gateway(payment_processor_account_id, context.tenant_id)
         gw_response                  = gateway.details_for(token)
         response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, context.tenant_id, payment_processor_account_id)
-        return false unless response.success? and !response.payer_id.blank?
+        raise response.message unless response.success? and !response.payer_id.blank?
 
         # Pass extra parameters for the gateway here
         options = {
