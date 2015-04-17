@@ -92,14 +92,3 @@ curl -v \
      }' \
      "http://127.0.0.1:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?isDefault=true"
 ```
-
-To display the payment method details for that account, one can call:
-
-```
-curl -v \
-     -u admin:password \
-     -H 'X-Killbill-ApiKey: bob' \
-     -H 'X-Killbill-ApiSecret: lazar' \
-     -H 'Accept: application/json' \
-     "http://127.0.0.1:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?withPluginInfo=true"
-```
