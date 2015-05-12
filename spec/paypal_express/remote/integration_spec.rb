@@ -8,43 +8,28 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
   # Share the BAID
   before(:all) do
-    @plugin = Killbill::PaypalExpress::PaymentPlugin.new
-
-    @account_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaUserAccountApi.new
-    @payment_api    = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaPaymentApi.new
-    @tenant_api     = ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaTenantUserApi.new({})
-
-    svcs            = {:account_user_api => @account_api, :payment_api => @payment_api, :tenant_user_api => @tenant_api}
-    @plugin.kb_apis = Killbill::Plugin::KillbillApi.new('paypal-express', svcs)
-
-    @call_context           = ::Killbill::Plugin::Model::CallContext.new
-    @call_context.tenant_id = '00000011-0022-0033-0044-000000000055'
-    @call_context           = @call_context.to_ruby(@call_context)
-
-    @plugin.logger       = Logger.new(STDOUT)
-    @plugin.logger.level = Logger::INFO
-    @plugin.conf_dir     = File.expand_path(File.dirname(__FILE__) + '../../../../')
-    @plugin.root         = '/foo/killbill-paypal-express/0.0.1'
-
+    @plugin = build_plugin(::Killbill::PaypalExpress::PaymentPlugin, 'paypal_express')
     @plugin.start_plugin
 
-    @properties = []
-    @amount     = BigDecimal.new('100')
-    @currency   = 'USD'
+    @call_context = build_call_context
 
-    kb_account_id               = SecureRandom.uuid
-    external_key, kb_account_id = create_kb_account(kb_account_id)
+    @properties = []
+    @amount = BigDecimal.new('100')
+    @currency = 'USD'
+
+    kb_account_id = SecureRandom.uuid
+    external_key, kb_account_id = create_kb_account(kb_account_id, @plugin.kb_apis.proxied_services[:account_user_api])
 
     # Initiate the setup process
-    response                    = create_token(kb_account_id, @call_context.tenant_id)
-    token                       = response.token
+    response = create_token(kb_account_id, @call_context.tenant_id)
+    token = response.token
     print "\nPlease go to #{@plugin.to_express_checkout_url(response, @call_context.tenant_id)} to proceed and press any key to continue...
 Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
     $stdin.gets
 
     # Complete the setup process
-    @properties << create_pm_kv_info('token', token)
-    @pm             = create_payment_method(::Killbill::PaypalExpress::PaypalExpressPaymentMethod, kb_account_id, @call_context.tenant_id, @properties)
+    @properties << build_property('token', token)
+    @pm = create_payment_method(::Killbill::PaypalExpress::PaypalExpressPaymentMethod, kb_account_id, @call_context.tenant_id, @properties)
 
     # Verify our table directly. Note that @pm.token is the baid
     payment_methods = ::Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(@pm.token, kb_account_id, @call_context.tenant_id)
@@ -62,7 +47,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
 
     kb_payment_id = SecureRandom.uuid
     1.upto(6) do
-      @kb_payment = @payment_api.add_payment(kb_payment_id)
+      @kb_payment = @plugin.kb_apis.proxied_services[:payment_api].add_payment(kb_payment_id)
     end
   end
 
@@ -129,7 +114,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_response.transaction_type.should == :AUTHORIZE
 
     partial_capture_amount = BigDecimal.new('10')
-    payment_response       = @plugin.capture_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
+    payment_response = @plugin.capture_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, partial_capture_amount, @currency, @properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == partial_capture_amount
     payment_response.transaction_type.should == :CAPTURE

@@ -1,6 +1,9 @@
 require 'spec_helper'
 
 describe Killbill::PaypalExpress::PaymentPlugin do
+
+  include ::Killbill::Plugin::ActiveMerchant::RSpec
+
   before(:each) do
     Dir.mktmpdir do |dir|
       file = File.new(File.join(dir, 'paypal_express.yml'), 'w+')
@@ -17,12 +20,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       eos
       file.close
 
-      @plugin              = Killbill::PaypalExpress::PaymentPlugin.new
-      @plugin.logger       = Logger.new(STDOUT)
-      @plugin.logger.level = Logger::INFO
-      @plugin.conf_dir     = File.dirname(file)
-      @plugin.kb_apis      = Killbill::Plugin::KillbillApi.new('paypal_express', {})
-      @plugin.root         = '/foo/killbill-paypal_express/0.0.1'
+      @plugin = build_plugin(::Killbill::PaypalExpress::PaymentPlugin, 'paypal_express', File.dirname(file))
 
       # Start the plugin here - since the config file will be deleted
       @plugin.start_plugin

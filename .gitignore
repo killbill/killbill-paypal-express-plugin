@@ -22,9 +22,6 @@ doc/
 
 .DS_Store
 
-# Build directory
-killbill-paypal-express/
-
 # Testing database
 test.db
 
