@@ -3,7 +3,7 @@ language: ruby
 sudo: false
 cache: bundler
 
-script: 'bundle exec rake test:spec test:remote:spec'
+script: 'bundle exec rake test:spec'
 
 notifications:
   email:
