@@ -1,3 +1,15 @@
+2.0.0
+    Initial release for Kill Bill 0.14.x
+
+1.8.1
+    Fix add_payment_method to retrieve the token from the properties embedded in the payment_method data
+
+1.8.0
+    Add missing require 'openssl'
+
+1.7.1
+    Update to generated template
+
 1.7.0
     Update to latest killbill
     Change groupId to org.kill-bill.billing.plugin.ruby
