@@ -16,6 +16,7 @@ module Killbill #:nodoc:
               ::Killbill::PaypalExpress::PaypalExpressResponse)
 
         @ip = ::Killbill::Plugin::ActiveMerchant::Utils.ip
+        @private_api = ::Killbill::PaypalExpress::PrivatePaymentPlugin.new
       end
 
       def on_event(event)
@@ -61,13 +62,17 @@ module Killbill #:nodoc:
 
         add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
 
-        properties        = merge_properties(properties, options)
-
-        # Can't use default implementation: the purchase signature is for one-off payments only
-        #super(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-        gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-          gateway.reference_transaction(amount_in_cents, options)
+        if options[:token] #baid
+          gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+            gateway.reference_transaction(amount_in_cents, options)
+          end
+        else #hpp
+          gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+            gateway.purchase(amount_in_cents, options)
+          end
         end
+
+        properties = merge_properties(properties, options)
 
         dispatch_to_gateways(:purchase, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
       end
@@ -125,21 +130,27 @@ module Killbill #:nodoc:
         token = find_value_from_properties(properties, 'token')
         # token is passed from the json body
         token = find_value_from_properties(payment_method_props.properties, 'token') if token.nil?
-        raise 'No token specified!' if token.nil?
 
-        # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
-        options                      = properties_to_hash(properties)
-        payment_processor_account_id = options[:payment_processor_account_id] || :default
-        gateway                      = lookup_gateway(payment_processor_account_id, context.tenant_id)
-        gw_response                  = gateway.details_for(token)
-        response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, context.tenant_id, payment_processor_account_id)
-        raise response.message unless response.success? and !response.payer_id.blank?
+        unless token.nil?
+          # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
+          options                      = properties_to_hash(properties)
+          payment_processor_account_id = options[:payment_processor_account_id] || :default
+          gateway                      = lookup_gateway(payment_processor_account_id, context.tenant_id)
+          gw_response                  = gateway.details_for(token)
+          response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, context.tenant_id, payment_processor_account_id)
+          raise response.message unless response.success? and !response.payer_id.blank?
 
-        # Pass extra parameters for the gateway here
-        options = {
-            :paypal_express_token    => token,
-            :paypal_express_payer_id => response.payer_id
-        }
+          # Pass extra parameters for the gateway here
+          options = {
+              :paypal_express_token    => token,
+              :paypal_express_payer_id => response.payer_id
+          }
+        else
+          # HPP flow
+          options = {
+              :skip_gw => true
+          }
+        end
 
         properties = merge_properties(properties, options)
         super(kb_account_id, kb_payment_method_id, payment_method_props, set_default, properties, context)
@@ -196,7 +207,21 @@ module Killbill #:nodoc:
         }
         descriptor_fields = merge_properties(descriptor_fields, options)
 
-        super(kb_account_id, descriptor_fields, properties, context)
+        descriptor = super(kb_account_id, descriptor_fields, properties, context)
+
+        # TODO: options need to include return_url and cancel_return_url
+
+        response = @private_api.initiate_express_checkout(options[:account_id],
+                                                          context.tenant_id,
+                                                          options[:amount],
+                                                          options[:currency],
+                                                          options)
+        unless response.success?
+          raise "Unable to initiate paypal express checkout: #{response.message}"
+        end
+
+        descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
+        descriptor
       end
 
       def process_notification(notification, properties, context)
