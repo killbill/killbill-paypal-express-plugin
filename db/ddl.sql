@@ -2,7 +2,7 @@ CREATE TABLE `paypal_express_payment_methods` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `kb_payment_method_id` varchar(255) DEFAULT NULL,
   `paypal_express_payer_id` varchar(255) DEFAULT NULL,
-  `paypal_express_token` varchar(255) NOT NULL,
+  `paypal_express_token` varchar(255) DEFAULT NULL,
   `token` varchar(255) DEFAULT NULL,
   `cc_first_name` varchar(255) DEFAULT NULL,
   `cc_last_name` varchar(255) DEFAULT NULL,

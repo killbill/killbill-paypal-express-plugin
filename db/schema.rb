@@ -1,10 +1,10 @@
 require 'active_record'
 
-ActiveRecord::Schema.define(:version => 20140410153635) do
+ActiveRecord::Schema.define(:version => 20151008153635) do
   create_table "paypal_express_payment_methods", :force => true do |t|
     t.string   "kb_payment_method_id"     # NULL before Kill Bill knows about it
     t.string   "paypal_express_payer_id"  # NULL before the express checkout is completed
-    t.string   "paypal_express_token",    :null => false, :unique => true
+    t.string   "paypal_express_token"
     t.string   "token"                    # paypal-express baid, NULL before the express checkout is completed
     t.string   "cc_first_name"
     t.string   "cc_last_name"
