@@ -62,7 +62,8 @@ module Killbill #:nodoc:
 
         if find_value_from_properties(properties, 'from_hpp')
           token    = find_value_from_properties(properties, 'token')
-          payer_id = find_payer_api(token, kb_account_id, context.tenant_id, properties_to_hash(properties))
+          payer_id = find_value_from_properties(properties, 'payer_id')
+          payer_id = find_payer_api(token, kb_account_id, context.tenant_id, properties_to_hash(properties)) if payer_id.nil?
           options  = {
               :token    => token,
               :payer_id => payer_id
@@ -148,7 +149,7 @@ module Killbill #:nodoc:
           payer_id = find_payer_api(token, kb_account_id, context.tenant_id, properties_to_hash(properties))
           options  = {
               :paypal_express_token    => token,
-              :paypal_express_payer_id => response.payer_id
+              :paypal_express_payer_id => payer_id
           }
         end
 
@@ -198,43 +199,42 @@ module Killbill #:nodoc:
 
       def build_form_descriptor(kb_account_id, descriptor_fields, properties, context)
         # Pass extra parameters for the gateway here
-        options           = {}
-        properties        = merge_properties(properties, options)
-
-        # Add your custom static hidden tags here
-        options           = {
-            #:token => config[:paypal-express][:token]
-        }
-        descriptor_fields = merge_properties(descriptor_fields, options)
-        form_fields       = properties_to_hash(descriptor_fields)
-        descriptor        = super(kb_account_id, descriptor_fields, properties, context)
-
-        # TODO: options need to include return_url and cancel_return_url
+        options              = {}
+        properties           = merge_properties(properties, options)
+        descriptor_fields    = merge_properties(descriptor_fields, options)
+        form_fields          = properties_to_hash(descriptor_fields)
+        descriptor           = super(kb_account_id, descriptor_fields, properties, context)
+        kb_account           = @kb_apis.account_user_api.get_account_by_id(kb_account_id, context)
+        kb_payment_method_id = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], context).find { |pm| pm.plugin_name == 'killbill-paypal-express' }).id
+        amount               = (form_fields[:amount] || "0").to_i
+        currency             = form_fields[:currency] || kb_account.currency
 
         response = @private_api.initiate_express_checkout(kb_account_id,
                                                           context.tenant_id,
-                                                          form_fields[:amount],
-                                                          form_fields[:currency],
+                                                          amount,
+                                                          currency,
+                                                          false,
                                                           form_fields)
         unless response.success?
           raise "Unable to initiate paypal express checkout: #{response.message}"
         end
 
-        descriptor.form_url  = @private_api.to_express_checkout_url(response, context.tenant_id, options)
-        kb_account           = @kb_apis.account_user_api.get_account_by_id(kb_account_id, context)
-        kb_payment_method_id = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], context).find { |pm| pm.plugin_name == 'killbill-paypal-express' }).id
-        properties           = hash_to_properties(:from_hpp => true)
+        descriptor.form_url   = @private_api.to_express_checkout_url(response, context.tenant_id, options)
 
-        @kb_apis.payment_api.create_purchase(kb_account,
-                                             kb_payment_method_id,
-                                             nil,
-                                             form_fields[:amount],
-                                             form_fields[:currency] || kb_account.currency,
-                                             nil,
-                                             response.token,
-                                             properties,
-                                             context)
+        properties_hash       = properties_to_hash(properties)
+        should_create_payment = Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :create_pending_payment)
 
+        if should_create_payment
+          @kb_apis.payment_api.create_purchase(kb_account,
+                                               kb_payment_method_id,
+                                               nil,
+                                               amount,
+                                               currency,
+                                               nil,
+                                               response.token,
+                                               hash_to_properties(:from_hpp => true, :token => response.token),
+                                               context)
+        end
         descriptor
       end
 

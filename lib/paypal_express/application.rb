@@ -67,6 +67,7 @@ post '/plugins/killbill-paypal-express/1.0/setup-checkout', :provides => 'json' 
                                               kb_tenant_id,
                                               data['amount_in_cents'] || 0,
                                               data['currency'] || 'USD',
+                                              true,
                                               options
   unless response.success?
     status 500

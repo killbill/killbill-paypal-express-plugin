@@ -10,7 +10,7 @@ module Killbill #:nodoc:
       end
 
       # See https://cms.paypal.com/uk/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_ECReferenceTxns
-      def initiate_express_checkout(kb_account_id, kb_tenant_id, amount_in_cents=0, currency='USD', options = {})
+      def initiate_express_checkout(kb_account_id, kb_tenant_id, amount_in_cents=0, currency='USD', with_baid=true, options = {})
         payment_processor_account_id = (options[:payment_processor_account_id] || :default)
 
         options[:currency]          ||= currency
@@ -19,9 +19,11 @@ module Killbill #:nodoc:
         options[:return_url]        ||= 'http://www.example.com/success'
         options[:cancel_return_url] ||= 'http://www.example.com/sad_panda'
 
-        options[:billing_agreement]               ||= {}
-        options[:billing_agreement][:type]        ||= 'MerchantInitiatedBilling'
-        options[:billing_agreement][:description] ||= 'Kill Bill billing agreement'
+        if with_baid
+          options[:billing_agreement]               ||= {}
+          options[:billing_agreement][:type]        ||= 'MerchantInitiatedBilling'
+          options[:billing_agreement][:description] ||= 'Kill Bill billing agreement'
+        end
 
         # Go to Paypal (SetExpressCheckout call)
         payment_processor_account_id              = options[:payment_processor_account_id] || :default
