@@ -60,25 +60,27 @@ module Killbill #:nodoc:
         # Pass extra parameters for the gateway here
         options = {}
 
-        if find_value_from_properties(properties, 'from_hpp')
-          token    = find_value_from_properties(properties, 'token')
-          payer_id = find_value_from_properties(properties, 'payer_id')
-          payer_id = find_payer_api(token, kb_account_id, context.tenant_id, properties_to_hash(properties)) if payer_id.nil?
-          options  = {
-              :token    => token,
-              :payer_id => payer_id
-          }
-          gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-            gateway.purchase(amount_in_cents, options)
-          end
-        else
+        add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+
+        # if we have a baid on file then it will be in the options now
+        if options[:token]
           gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
             # Can't use default implementation: the purchase signature is for one-off payments only
             gateway.reference_transaction(amount_in_cents, options)
           end
+        else
+          options[:token]    = find_value_from_properties(properties, 'token')
+          options[:payer_id] = find_value_from_properties(properties, 'payer_id')
+          gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+            gateway.purchase(amount_in_cents, options)
+          end
         end
-
-        add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+        unless options[:payer_id]
+          options[:payer_id] = find_payer_api(options[:token],
+                                              kb_account_id,
+                                              context.tenant_id,
+                                              properties_to_hash(properties))
+        end
 
         properties = merge_properties(properties, options)
 
@@ -203,7 +205,6 @@ module Killbill #:nodoc:
         properties           = merge_properties(properties, options)
         descriptor_fields    = merge_properties(descriptor_fields, options)
         form_fields          = properties_to_hash(descriptor_fields)
-        descriptor           = super(kb_account_id, descriptor_fields, properties, context)
         kb_account           = @kb_apis.account_user_api.get_account_by_id(kb_account_id, context)
         kb_payment_method_id = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], context).find { |pm| pm.plugin_name == 'killbill-paypal-express' }).id
         amount               = (form_fields[:amount] || "0").to_i
@@ -219,22 +220,29 @@ module Killbill #:nodoc:
           raise "Unable to initiate paypal express checkout: #{response.message}"
         end
 
-        descriptor.form_url   = @private_api.to_express_checkout_url(response, context.tenant_id, options)
-
         properties_hash       = properties_to_hash(properties)
-        should_create_payment = Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :create_pending_payment)
+        should_create_payment = Killbill::Plugin::ActiveMerchant::Utils.normalized(form_fields, :create_pending_payment)
 
         if should_create_payment
-          @kb_apis.payment_api.create_purchase(kb_account,
-                                               kb_payment_method_id,
-                                               nil,
-                                               amount,
-                                               currency,
-                                               nil,
-                                               response.token,
-                                               hash_to_properties(:from_hpp => true, :token => response.token),
-                                               context)
+          custom_props         = hash_to_properties(:from_hpp => true,
+                                                    :token => response.token)
+          payment_external_key = form_fields[:payment_external_key]
+
+          payment = @kb_apis.payment_api
+                            .create_purchase(kb_account,
+                                             nil,
+                                             nil,
+                                             amount,
+                                             currency,
+                                             payment_external_key,
+                                             response.token,
+                                             custom_props,
+                                             context)
+
+          descriptor_fields << build_property('pending_payment_id', payment.id)
         end
+        descriptor          = super(kb_account_id, descriptor_fields, properties, context)
+        descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
         descriptor
       end
 
@@ -280,9 +288,9 @@ module Killbill #:nodoc:
       def add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
         payment_method = @payment_method_model.from_kb_payment_method_id(kb_payment_method_id, context.tenant_id)
 
-        options[:payer_id]     ||= payment_method.paypal_express_payer_id if payment_method.paypal_express_payer_id
-        options[:token]        ||= payment_method.paypal_express_token if payment_method.paypal_express_token
-        options[:reference_id] ||= payment_method.token if payment_method.token # baid
+        options[:payer_id]     ||= payment_method.paypal_express_payer_id.presence
+        options[:token]        ||= payment_method.paypal_express_token.presence
+        options[:reference_id] ||= payment_method.token.presence # baid
 
         options[:payment_type] ||= 'Any'
         options[:invoice_id]   ||= kb_payment_transaction_id

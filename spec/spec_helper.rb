@@ -22,3 +22,12 @@ ActiveRecord::Base.establish_connection(
 # Create the schema
 require File.expand_path(File.dirname(__FILE__) + '../../db/schema.rb')
 
+class PaypalExpressJavaPaymentApi < ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaPaymentApi
+  def get_account_payment_methods(kb_account_id, plugin_info, properties, context)
+    [OpenStruct.new(:plugin_name => 'killbill-paypal-express', :id => SecureRandom.uuid)]
+  end
+
+  def create_purchase(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, payment_external_key, payment_transaction_external_key, properties, context)
+    add_payment(SecureRandom.uuid, SecureRandom.uuid, payment_transaction_external_key, :PURCHASE)
+  end
+end

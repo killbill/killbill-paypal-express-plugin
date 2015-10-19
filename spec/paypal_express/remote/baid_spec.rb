@@ -124,6 +124,25 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_response.transaction_type.should == :VOID
   end
 
+  it 'should generate forms correctly' do
+    context = @plugin.kb_apis.create_context(@call_context.tenant_id)
+    fields  = @plugin.hash_to_properties(
+                 :order_id               => '1234',
+                 :amount                 => 12,
+                 :payment_external_key   => "my payment",
+                 :create_pending_payment => true
+              )
+    form    = @plugin.build_form_descriptor(@pm.kb_account_id, fields, [], context)
+
+    form.kb_account_id.should == @pm.kb_account_id
+    form.form_method.should   == 'POST'
+    form.form_url.should      == 'https://www.paypal.com/cgi-bin/webscr'
+    form.pending_payment_id.should_not be_nil
+
+    form_fields = @plugin.properties_to_hash(form.form_fields)
+    STDERR.puts form_fields.inspect
+  end
+
   private
 
   def create_token(kb_account_id, kb_tenant_id)
