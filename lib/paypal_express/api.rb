@@ -59,32 +59,53 @@ module Killbill #:nodoc:
       def purchase_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
         # Pass extra parameters for the gateway here
         options = {}
+        if find_value_from_properties(properties, 'from_hpp') == 'true'
+          options[:token] = find_value_from_properties(properties, 'token')
 
-        add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
-
-        # if we have a baid on file then it will be in the options now
-        if options[:token]
-          gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-            # Can't use default implementation: the purchase signature is for one-off payments only
-            gateway.reference_transaction(amount_in_cents, options)
-          end
+          response = @response_model.create(:api_call                     => :build_form_descriptor,
+                                            :kb_account_id                => kb_account_id,
+                                            :kb_payment_id                => kb_payment_id,
+                                            :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                            :transaction_type             => :PURCHASE,
+                                            :authorization                => options[:token],
+                                            :payment_processor_account_id => nil,
+                                            :kb_tenant_id                 => context.tenant_id,
+                                            :success                      => true,
+                                            :created_at                   => Time.now.utc,
+                                            :updated_at                   => Time.now.utc,
+                                            :message                      => response_message = {
+                                                                               :exception_class => "",
+                                                                               :exception_message => "",
+                                                                               :payment_plugin_status => :PENDING
+                                                                             }.to_json)
+          transaction        = response.to_transaction_info_plugin(nil)
+          transaction.status = :PENDING
+          transaction
         else
-          options[:token]    = find_value_from_properties(properties, 'token')
-          options[:payer_id] = find_value_from_properties(properties, 'payer_id')
-          gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-            gateway.purchase(amount_in_cents, options)
+          add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+
+          # if we have a baid on file then it will be in the options now
+          if options[:token]
+            gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+              # Can't use default implementation: the purchase signature is for one-off payments only
+              gateway.reference_transaction(amount_in_cents, options)
+            end
+          else
+            options[:token]    = find_value_from_properties(properties, 'token')
+            options[:payer_id] = find_value_from_properties(properties, 'payer_id')
+            gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+              gateway.purchase(amount_in_cents, options)
+            end
           end
+          unless options[:payer_id]
+            options[:payer_id] = find_payer_api(options[:token],
+                                                kb_account_id,
+                                                context.tenant_id,
+                                                properties_to_hash(properties))
+          end
+          properties = merge_properties(properties, options)
+          dispatch_to_gateways(:purchase, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
         end
-        unless options[:payer_id]
-          options[:payer_id] = find_payer_api(options[:token],
-                                              kb_account_id,
-                                              context.tenant_id,
-                                              properties_to_hash(properties))
-        end
-
-        properties = merge_properties(properties, options)
-
-        dispatch_to_gateways(:purchase, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
       end
 
       def void_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, properties, context)
@@ -201,23 +222,28 @@ module Killbill #:nodoc:
 
       def build_form_descriptor(kb_account_id, descriptor_fields, properties, context)
         # Pass extra parameters for the gateway here
-        options              = {}
-        properties           = merge_properties(properties, options)
-        descriptor_fields    = merge_properties(descriptor_fields, options)
-        form_fields          = properties_to_hash(descriptor_fields)
-        kb_account           = @kb_apis.account_user_api.get_account_by_id(kb_account_id, context)
-        kb_payment_method_id = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], context).find { |pm| pm.plugin_name == 'killbill-paypal-express' }).id
-        amount               = (form_fields[:amount] || "0").to_i
-        currency             = form_fields[:currency] || kb_account.currency
+        options           = {}
+        properties        = merge_properties(properties, options)
+        descriptor_fields = merge_properties(descriptor_fields, options)
+        form_fields       = properties_to_hash(descriptor_fields)
+        kb_account        = @kb_apis.account_user_api.get_account_by_id(kb_account_id, context)
+        kb_payment_method = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], context).find { |pm| pm.plugin_name == 'killbill-paypal-express' })
+        payment_methods   = @payment_method_model.from_kb_account_id(kb_account_id, context.tenant_id)
+        token             = payment_method.paypal_express_token unless payment_methods.empty?
+        amount            = (form_fields[:amount] || "0").to_i
+        currency          = form_fields[:currency] || kb_account.currency
 
-        response = @private_api.initiate_express_checkout(kb_account_id,
-                                                          context.tenant_id,
-                                                          amount,
-                                                          currency,
-                                                          false,
-                                                          form_fields)
-        unless response.success?
-          raise "Unable to initiate paypal express checkout: #{response.message}"
+        unless token
+          response = @private_api.initiate_express_checkout(kb_account_id,
+                                                            context.tenant_id.to_s,
+                                                            amount,
+                                                            currency,
+                                                            false,
+                                                            form_fields)
+          unless response.success?
+            raise "Unable to initiate paypal express checkout: #{response.message}"
+          end
+          token = response.token
         end
 
         properties_hash       = properties_to_hash(properties)
@@ -225,21 +251,20 @@ module Killbill #:nodoc:
 
         if should_create_payment
           custom_props         = hash_to_properties(:from_hpp => true,
-                                                    :token => response.token)
+                                                    :token    => token)
           payment_external_key = form_fields[:payment_external_key]
 
           payment = @kb_apis.payment_api
                             .create_purchase(kb_account,
-                                             nil,
+                                             kb_payment_method.id,
                                              nil,
                                              amount,
                                              currency,
                                              payment_external_key,
-                                             response.token,
+                                             token,
                                              custom_props,
                                              context)
-
-          descriptor_fields << build_property('pending_payment_id', payment.id)
+          properties << build_property('kb_payment_id', payment.id)
         end
         descriptor          = super(kb_account_id, descriptor_fields, properties, context)
         descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
@@ -280,7 +305,9 @@ module Killbill #:nodoc:
         gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
         gw_response                  = gateway.details_for(token)
         response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, kb_tenant_id, payment_processor_account_id)
-        raise response.message unless response.success? and !response.payer_id.blank?
+
+        raise response.message unless response.success?
+        raise "Could not find the payer_id for token #{token}" if response.payer_id.blank?
 
         response.payer_id
       end
