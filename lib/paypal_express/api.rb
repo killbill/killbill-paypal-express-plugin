@@ -73,13 +73,11 @@ module Killbill #:nodoc:
                                             :success                      => true,
                                             :created_at                   => Time.now.utc,
                                             :updated_at                   => Time.now.utc,
-                                            :message                      => response_message = {
-                                                                               :exception_class => "",
-                                                                               :exception_message => "",
-                                                                               :payment_plugin_status => :PENDING
-                                                                             }.to_json)
-          transaction        = response.to_transaction_info_plugin(nil)
-          transaction.status = :PENDING
+                                            :message                      => { :payment_plugin_status => :PENDING }.to_json)
+          transaction          = response.to_transaction_info_plugin(nil)
+          transaction.status   = :PENDING
+          transaction.amount   = amount
+          transaction.currency = currency
           transaction
         else
           add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
@@ -103,8 +101,11 @@ module Killbill #:nodoc:
                                                 context.tenant_id,
                                                 properties_to_hash(properties))
           end
-          properties = merge_properties(properties, options)
-          dispatch_to_gateways(:purchase, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
+          properties      = merge_properties(properties, options)
+          result          = dispatch_to_gateways(:purchase, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
+          result.amount   = amount
+          result.currency = currency
+          result
         end
       end
 
@@ -246,13 +247,13 @@ module Killbill #:nodoc:
           token = response.token
         end
 
-        properties_hash       = properties_to_hash(properties)
-        should_create_payment = Killbill::Plugin::ActiveMerchant::Utils.normalized(form_fields, :create_pending_payment)
+        descriptor          = super(kb_account_id, descriptor_fields, properties, context)
+        descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
+        properties_hash     = properties_to_hash(properties)
 
-        if should_create_payment
-          custom_props         = hash_to_properties(:from_hpp => true,
-                                                    :token    => token)
-          payment_external_key = form_fields[:payment_external_key]
+        if Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :create_pending_payment)
+          custom_props = hash_to_properties(:from_hpp => true,
+                                            :token    => token)
 
           payment = @kb_apis.payment_api
                             .create_purchase(kb_account,
@@ -260,14 +261,12 @@ module Killbill #:nodoc:
                                              nil,
                                              amount,
                                              currency,
-                                             payment_external_key,
+                                             properties_hash[:payment_external_key],
                                              token,
                                              custom_props,
                                              context)
-          properties << build_property('kb_payment_id', payment.id)
+          descriptor.properties << build_property('kb_payment_id', payment.id)
         end
-        descriptor          = super(kb_account_id, descriptor_fields, properties, context)
-        descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
         descriptor
       end
 
