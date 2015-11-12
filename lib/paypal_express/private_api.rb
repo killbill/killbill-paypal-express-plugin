@@ -11,8 +11,6 @@ module Killbill #:nodoc:
 
       # See https://cms.paypal.com/uk/cgi-bin/?cmd=_render-content&content_ID=developer/e_howto_api_ECReferenceTxns
       def initiate_express_checkout(kb_account_id, kb_tenant_id, amount_in_cents=0, currency='USD', with_baid=true, options = {})
-        payment_processor_account_id = (options[:payment_processor_account_id] || :default)
-
         options[:currency]          ||= currency
 
         # Required arguments
@@ -26,9 +24,9 @@ module Killbill #:nodoc:
         end
 
         # Go to Paypal (SetExpressCheckout call)
-        payment_processor_account_id              = options[:payment_processor_account_id] || :default
-        paypal_express_response                   = gateway(payment_processor_account_id, kb_tenant_id).setup_authorization(amount_in_cents, options)
-        response, transaction                     = save_response_and_transaction(paypal_express_response, :initiate_express_checkout, kb_account_id, kb_tenant_id, payment_processor_account_id)
+        payment_processor_account_id = options[:payment_processor_account_id] || :default
+        paypal_express_response      = gateway(payment_processor_account_id, kb_tenant_id).setup_authorization(amount_in_cents, options)
+        response, transaction        = save_response_and_transaction(paypal_express_response, :initiate_express_checkout, kb_account_id, kb_tenant_id, payment_processor_account_id)
 
         response
       end

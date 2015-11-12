@@ -75,7 +75,6 @@ module Killbill #:nodoc:
                                             :updated_at                   => Time.now.utc,
                                             :message                      => { :payment_plugin_status => :PENDING }.to_json)
           transaction          = response.to_transaction_info_plugin(nil)
-          transaction.status   = :PENDING
           transaction.amount   = amount
           transaction.currency = currency
           transaction
@@ -234,13 +233,17 @@ module Killbill #:nodoc:
         amount            = (form_fields[:amount] || "0").to_i
         currency          = form_fields[:currency] || kb_account.currency
 
+        properties_hash             = properties_to_hash(properties)
+        options[:return_url]        = Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
+        options[:cancel_return_url] = Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
+
         unless token
           response = @private_api.initiate_express_checkout(kb_account_id,
                                                             context.tenant_id.to_s,
                                                             amount,
                                                             currency,
                                                             false,
-                                                            form_fields)
+                                                            options)
           unless response.success?
             raise "Unable to initiate paypal express checkout: #{response.message}"
           end
@@ -249,9 +252,10 @@ module Killbill #:nodoc:
 
         descriptor          = super(kb_account_id, descriptor_fields, properties, context)
         descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
-        properties_hash     = properties_to_hash(properties)
 
-        if Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :create_pending_payment)
+        create_pending_payment = Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :create_pending_payment)
+        create_pending_payment = true if create_pending_payment.nil?
+        if create_pending_payment
           custom_props = hash_to_properties(:from_hpp => true,
                                             :token    => token)
 
@@ -262,7 +266,7 @@ module Killbill #:nodoc:
                                              amount,
                                              currency,
                                              properties_hash[:payment_external_key],
-                                             token,
+                                             properties_hash[:payment_transaction_external_key],
                                              custom_props,
                                              context)
           descriptor.properties << build_property('kb_payment_id', payment.id)
