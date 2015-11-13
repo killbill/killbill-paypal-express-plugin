@@ -133,7 +133,12 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
                  :order_id => '1234',
                  :amount   => 12,
               )
-    form    = @plugin.build_form_descriptor(@pm.kb_account_id, fields, [], context)
+
+    properties = @plugin.hash_to_properties(
+      :create_pending_payment => false
+    )
+
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, fields, properties, context)
 
     form.kb_account_id.should == @pm.kb_account_id
     form.form_method.should   == 'POST'
