@@ -93,7 +93,7 @@ module Killbill #:nodoc:
 
       def refund_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
         # Cannot refund based on authorizations (default behavior)
-        linked_transaction_type = @transaction_model.purchases_from_kb_payment_id(kb_payment_id, context.tenant_id).size > 0 ? :purchase : :capture
+        linked_transaction_type = @transaction_model.purchases_from_kb_payment_id(kb_payment_id, context.tenant_id).size > 0 ? :PURCHASE : :CAPTURE
 
         # Pass extra parameters for the gateway here
         options                 = {
