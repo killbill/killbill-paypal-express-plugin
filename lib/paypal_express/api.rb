@@ -250,8 +250,9 @@ module Killbill #:nodoc:
           token = response.token
         end
 
-        descriptor          = super(kb_account_id, descriptor_fields, properties, context)
-        descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
+        descriptor             = super(kb_account_id, descriptor_fields, properties, context)
+        descriptor.form_url    = @private_api.to_express_checkout_url(response, context.tenant_id, options)
+        descriptor.form_method = 'GET'
 
         create_pending_payment = Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :create_pending_payment)
         create_pending_payment = true if create_pending_payment.nil?
