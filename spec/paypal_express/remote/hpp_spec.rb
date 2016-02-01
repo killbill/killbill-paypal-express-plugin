@@ -102,7 +102,8 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
               )
 
     properties = @plugin.hash_to_properties(
-      :create_pending_payment => false
+      :create_pending_payment => false,
+      :form_method => 'post'
     )
 
     form = @plugin.build_form_descriptor(@pm.kb_account_id, fields, properties, context)
@@ -129,7 +130,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     form = @plugin.build_form_descriptor(@pm.kb_account_id, fields, properties, context)
 
     form.kb_account_id.should == @pm.kb_account_id
-    form.form_method.should   == 'POST'
+    form.form_method.should   == 'GET'
     form.form_url.should start_with('https://www.sandbox.paypal.com/cgi-bin/webscr')
     form.properties.select{|prop| prop.key == 'kb_payment_id'}.should_not be_empty
   end
