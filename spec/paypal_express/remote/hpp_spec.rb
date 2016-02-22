@@ -9,7 +9,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   before(:all) do
     @plugin = build_plugin(::Killbill::PaypalExpress::PaymentPlugin, 'paypal_express')
     svcs = @plugin.kb_apis.proxied_services
-    svcs[:payment_api] = PaypalExpressJavaPaymentApi.new
+    svcs[:payment_api] = PaypalExpressJavaPaymentApi.new(@plugin)
     @plugin.kb_apis = ::Killbill::Plugin::KillbillApi.new('paypal_express', svcs)
     @plugin.start_plugin
 
@@ -49,6 +49,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     properties = []
     properties << build_property('token', token)
     purchase_and_refund(SecureRandom.uuid, SecureRandom.uuid, properties)
+
+    # Verify no extra payment was created in Kill Bill by the plugin
+    @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
   end
 
   it 'should generate forms with pending payments correctly' do
@@ -68,11 +71,25 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == 1
     @plugin.kb_apis.proxied_services[:payment_api].get_payment(kb_payment_id).transactions.first.external_key.should == payment_external_key
 
+    # Verify GET API
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :PURCHASE
+    payment_infos[0].amount.should be_nil
+    payment_infos[0].currency.should be_nil
+    payment_infos[0].status.should == :PENDING
+    payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
+    payment_infos[0].gateway_error_code.should be_nil
+
     validate_token(form)
 
     properties = []
     properties << build_property('token', token)
     purchase_and_refund(kb_payment_id, payment_external_key, properties)
+
+    # Verify no extra payment was created in Kill Bill by the plugin
+    @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == 1
   end
 
   private
@@ -108,10 +125,39 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_response.amount.should == @amount
     payment_response.transaction_type.should == :PURCHASE
 
+    # Verify GET API
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :PURCHASE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+
     # Try a full refund
     refund_response = @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, [], @call_context)
     refund_response.status.should eq(:PROCESSED), refund_response.gateway_error
     refund_response.amount.should == @amount
     refund_response.transaction_type.should == :REFUND
+
+    # Verify GET API
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
+    payment_infos.size.should == 2
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :PURCHASE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[1].kb_payment_id.should.should == kb_payment_id
+    payment_infos[1].transaction_type.should == :REFUND
+    payment_infos[1].amount.should == @amount
+    payment_infos[1].currency.should == @currency
+    payment_infos[1].status.should == :PROCESSED
+    payment_infos[1].gateway_error.should == 'Success'
+    payment_infos[1].gateway_error_code.should be_nil
   end
 end

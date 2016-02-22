@@ -159,11 +159,14 @@ module Killbill #:nodoc:
       end
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
-        # Pass extra parameters for the gateway here
-        options = {}
+        t_info_plugins = super(kb_account_id, kb_payment_id, properties, context)
 
-        properties = merge_properties(properties, options)
-        super(kb_account_id, kb_payment_id, properties, context)
+        # Completed purchases will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase')
+        # Other transaction types don't support the :PENDING state
+        is_purchase_pending = t_info_plugins.find { |t_info_plugin| t_info_plugin.transaction_type == :PURCHASE && t_info_plugin.status != :PENDING }.nil?
+        t_info_plugins_without_purchase_pending = t_info_plugins.reject { |t_info_plugin| t_info_plugin.transaction_type == :PURCHASE && t_info_plugin.status == :PENDING }
+
+        is_purchase_pending ? t_info_plugins: t_info_plugins_without_purchase_pending
       end
 
       def search_payments(search_key, offset, limit, properties, context)
