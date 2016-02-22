@@ -28,6 +28,6 @@ class PaypalExpressJavaPaymentApi < ::Killbill::Plugin::ActiveMerchant::RSpec::F
   end
 
   def create_purchase(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, payment_external_key, payment_transaction_external_key, properties, context)
-    add_payment(SecureRandom.uuid, SecureRandom.uuid, payment_transaction_external_key, :PURCHASE)
+    add_payment(kb_payment_id || SecureRandom.uuid, SecureRandom.uuid, payment_transaction_external_key, :PURCHASE)
   end
 end
