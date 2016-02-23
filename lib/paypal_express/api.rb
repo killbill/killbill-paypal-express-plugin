@@ -106,7 +106,7 @@ module Killbill #:nodoc:
                                                  properties_to_hash(properties))
           rescue => e
             # Maybe invalid token?
-            response = @response_model.create(:api_call                     => :build_form_descriptor,
+            response = @response_model.create(:api_call                     => :purchase,
                                               :kb_account_id                => kb_account_id,
                                               :kb_payment_id                => kb_payment_id,
                                               :kb_payment_transaction_id    => kb_payment_transaction_id,
