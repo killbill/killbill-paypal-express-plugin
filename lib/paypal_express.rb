@@ -3,6 +3,7 @@ require 'action_controller'
 require 'active_record'
 require 'action_view'
 require 'active_merchant'
+require 'active_merchant/billing/gateways/paypal/paypal_common_api'
 require 'active_support'
 require 'bigdecimal'
 require 'money'
@@ -15,6 +16,8 @@ require 'yaml'
 
 require 'killbill'
 require 'killbill/helpers/active_merchant'
+
+require 'paypal_express/ext/active_merchant/active_merchant.rb'
 
 require 'paypal_express/api'
 require 'paypal_express/private_api'
