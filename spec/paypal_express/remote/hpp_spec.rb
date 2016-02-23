@@ -27,6 +27,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     create_kb_account(kb_account_id, @plugin.kb_apis.proxied_services[:account_user_api])
 
     @pm = create_payment_method(::Killbill::PaypalExpress::PaypalExpressPaymentMethod, kb_account_id, @call_context.tenant_id)
+    verify_payment_method
   end
 
   before(:each) do
@@ -62,6 +63,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Verify the token cannot be re-used
     subsequent_purchase(properties)
+
+    # Verify no token/baid was stored
+    verify_payment_method
   end
 
   it 'should generate forms with pending payments correctly' do
@@ -110,6 +114,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Verify the token cannot be re-used
     subsequent_purchase(properties)
+
+    # Verify no token/baid was stored
+    verify_payment_method
   end
 
   private
@@ -211,5 +218,16 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].status.should == status
     payment_infos[0].gateway_error.should == msg
     payment_infos[0].gateway_error_code.should == gateway_error_code
+  end
+
+  def verify_payment_method
+    # Verify our table directly
+    payment_methods = ::Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id(@pm.kb_account_id, @call_context.tenant_id)
+    payment_methods.size.should == 1
+    payment_method = payment_methods.first
+    payment_method.should_not be_nil
+    payment_method.paypal_express_payer_id.should be_nil
+    payment_method.token.should be_nil
+    payment_method.kb_payment_method_id.should == @pm.kb_payment_method_id
   end
 end
