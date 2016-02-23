@@ -47,6 +47,69 @@ To go to production, create a `paypal_express.yml` configuration file under `/va
 Usage
 -----
 
+### One-off payments
+
+Create a payment method for the account:
+
+```
+curl -v \
+     -X POST \
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "pluginName": "killbill-paypal-express",
+       "pluginInfo": {}
+     }' \
+     "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>/paymentMethods?isDefault=true"
+```
+
+Generate the redirect URL using buildFormDescriptor (this will invoke `SetExpressCheckout`):
+
+```
+curl -v \
+     -X POST \
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "formFields": [{
+         "key": "amount",
+         "value": 10
+       },{
+         "key": "currency",
+         "value": "USD"
+       }]
+     }' \
+     "http://127.0.0.1:8080/1.0/kb/paymentGateways/hosted/form/<ACCOUNT_ID>"
+```
+
+The customer should be redirected to the url specified in the `formUrl` entry of the response, e.g. https://www.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-20G53990M6953444J.
+
+Once the customer comes back from the PayPal flow, trigger the payment:
+
+```
+curl -v \
+     -X POST \
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "transactionType": "PURCHASE",
+       "amount": "10",
+       "currency": "USD"
+     }' \
+     "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>/payments?pluginProperty=token=EC-20G53990M6953444J"
+```
+
+### Recurring payments via a billing agreement ID (BAID)
+
 Issue the following call to generate a Paypal token:
 
 ```
@@ -94,3 +157,22 @@ curl -v \
      }' \
      "http://127.0.0.1:8080/1.0/kb/accounts/13d26090-b8d7-11e2-9e96-0800200c9a66/paymentMethods?isDefault=true"
 ```
+
+Plugin properties
+-----------------
+
+| Key                          | Description                                                       |
+| ---------------------------: | ----------------------------------------------------------------- |
+| skip_gw                      | If true, skip the call to PayPal                                  |
+| token                        | PayPal token to use                                               |
+| payer_id                     | PayPal Payer id to use                                            |
+| create_pending_payment       | Create pending payment during buildFormDescriptor call            |
+| payment_processor_account_id | Config entry name of the merchant account to use                  |
+| external_key_as_order_id     | If true, set the payment external key as the PayPal order id      |
+| email                        | Purchaser email                                                   |
+| address1                     | Billing address first line                                        |
+| address2                     | Billing address second line                                       |
+| city                         | Billing address city                                              |
+| zip                          | Billing address zip code                                          |
+| state                        | Billing address state                                             |
+| country                      | Billing address country                                           |
