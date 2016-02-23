@@ -59,6 +59,14 @@ module Killbill #:nodoc:
               model)
       end
 
+      def self.last_token(kb_account_id, kb_tenant_id)
+        response = where(:api_call => 'initiate_express_checkout',
+                         :success => true,
+                         :kb_account_id => kb_account_id,
+                         :kb_tenant_id => kb_tenant_id).last
+        response.nil? ? nil : response.token
+      end
+
       def to_transaction_info_plugin(transaction=nil)
         t_info_plugin = super(transaction)
 

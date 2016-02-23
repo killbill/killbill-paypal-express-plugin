@@ -91,7 +91,7 @@ module Killbill #:nodoc:
             end
           else
             # One-off payment
-            options[:token]    = find_value_from_properties(properties, 'token')
+            options[:token]    = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
             gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
               gateway.purchase(amount_in_cents, options)
             end
@@ -311,6 +311,10 @@ module Killbill #:nodoc:
       end
 
       private
+
+      def find_last_token(kb_account_id, kb_tenant_id)
+        @response_model.last_token(kb_account_id, kb_tenant_id)
+      end
 
       def find_payer_id(token, kb_account_id, kb_tenant_id, options = {})
         raise 'Could not find the payer_id: the token is missing' if token.blank?

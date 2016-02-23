@@ -39,6 +39,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
 
+    # Verify the payment cannot go through without the token
+    purchase_with_missing_token
+
     # Verify multiple payments can be triggered for the same payment method
     n = 2
     1.upto(n) do
@@ -50,9 +53,6 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
       # Verify no payment was created in Kill Bill
       @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
-
-      # Verify the payment cannot go through without the token
-      purchase_with_missing_token
 
       properties = []
       properties << build_property('token', token)
@@ -76,12 +76,15 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Each loop triggers one successful purchase and one successful refund
     ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
-    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 9 * n
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 8 * n
   end
 
   it 'should generate forms with pending payments correctly' do
     ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+    # Verify the payment cannot go through without the token
+    purchase_with_missing_token
 
     # Verify multiple payments can be triggered for the same payment method
     n = 2
@@ -113,9 +116,6 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
       payment_infos[0].gateway_error_code.should be_nil
 
-      # Verify the payment cannot go through without the token
-      purchase_with_missing_token
-
       properties = []
       properties << build_property('token', token)
 
@@ -138,7 +138,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Each loop triggers one successful purchase and one successful refund
     ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
-    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 10 * n
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 9 * n
   end
 
   private
