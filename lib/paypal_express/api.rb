@@ -265,7 +265,7 @@ module Killbill #:nodoc:
 
           kb_payment_method = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], jcontext).find { |pm| pm.plugin_name == 'killbill-paypal-express' })
           payment = @kb_apis.payment_api
-                            .create_purchase(kb_account,
+                            .create_purchase(kb_account.send(:__instance_object__),
                                              kb_payment_method.id,
                                              nil,
                                              amount,
