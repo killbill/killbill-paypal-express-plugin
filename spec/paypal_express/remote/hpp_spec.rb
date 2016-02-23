@@ -44,10 +44,17 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     # Verify no payment was created in Kill Bill
     @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
 
-    validate_token(form)
+    # Verify the payment cannot go through without the token
+    purchase_with_missing_token
 
     properties = []
     properties << build_property('token', token)
+
+    # Verify the payment cannot go through until the token is validated
+    purchase_with_invalid_token(properties)
+
+    validate_token(form)
+
     purchase_and_refund(SecureRandom.uuid, SecureRandom.uuid, properties)
 
     # Verify no extra payment was created in Kill Bill by the plugin
@@ -85,10 +92,17 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
     payment_infos[0].gateway_error_code.should be_nil
 
-    validate_token(form)
+    # Verify the payment cannot go through without the token
+    purchase_with_missing_token
 
     properties = []
     properties << build_property('token', token)
+
+    # Verify the payment cannot go through until the token is validated
+    purchase_with_invalid_token(properties)
+
+    validate_token(form)
+
     purchase_and_refund(kb_payment_id, payment_external_key, properties)
 
     # Verify no extra payment was created in Kill Bill by the plugin
@@ -167,11 +181,23 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[1].gateway_error_code.should be_nil
   end
 
+  def purchase_with_missing_token
+    failed_purchase([], :CANCELED, 'Could not find the payer_id: the token is missing', 'RuntimeError')
+  end
+
+  def purchase_with_invalid_token(purchase_properties)
+    failed_purchase(purchase_properties, :CANCELED, "Could not find the payer_id for token #{properties_to_hash(purchase_properties)[:token]}", 'RuntimeError')
+  end
+
   def subsequent_purchase(purchase_properties)
+    failed_purchase(purchase_properties, :ERROR, 'A successful transaction has already been completed for this token.')
+  end
+
+  def failed_purchase(purchase_properties, status, msg, gateway_error_code=nil)
     kb_payment_id = SecureRandom.uuid
 
     payment_response = @plugin.purchase_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, purchase_properties, @call_context)
-    payment_response.status.should eq(:ERROR), payment_response.gateway_error
+    payment_response.status.should eq(status), payment_response.gateway_error
     payment_response.amount.should be_nil
     payment_response.transaction_type.should == :PURCHASE
 
@@ -182,8 +208,8 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].transaction_type.should == :PURCHASE
     payment_infos[0].amount.should be_nil
     payment_infos[0].currency.should be_nil
-    payment_infos[0].status.should == :ERROR
-    payment_infos[0].gateway_error.should == 'A successful transaction has already been completed for this token.'
-    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[0].status.should == status
+    payment_infos[0].gateway_error.should == msg
+    payment_infos[0].gateway_error_code.should == gateway_error_code
   end
 end
