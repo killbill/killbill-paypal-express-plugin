@@ -253,6 +253,7 @@ module Killbill #:nodoc:
 
         descriptor = super(kb_account_id, descriptor_fields, properties, context)
         descriptor.form_url = @private_api.to_express_checkout_url(response, context.tenant_id, options)
+        descriptor.form_method = 'GET'
         descriptor.properties << build_property('token', response.token)
 
         # By default, pending payments are not created for HPP

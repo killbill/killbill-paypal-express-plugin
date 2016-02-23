@@ -146,6 +146,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   def validate_form(form)
     form.kb_account_id.should == @pm.kb_account_id
     form.form_url.should start_with('https://www.sandbox.paypal.com/cgi-bin/webscr')
+    form.form_method.should == 'GET'
   end
 
   def validate_nil_form_property(form, key)
