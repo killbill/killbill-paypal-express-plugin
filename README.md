@@ -107,7 +107,7 @@ curl -v \
        "amount": "10",
        "currency": "USD"
      }' \
-     "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>"
+     "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>/payments"
 ```
 
 #### With a pending payment
@@ -146,7 +146,7 @@ curl -v \
      -H 'X-Killbill-ApiSecret: lazar' \
      -H 'X-Killbill-CreatedBy: admin' \
      -H 'Content-Type: application/json' \
-     "http://127.0.0.1:8080/1.0/kb/payments/<PAYMENT_ID>/payments"
+     "http://127.0.0.1:8080/1.0/kb/payments/<PAYMENT_ID>"
 ```
 
 ### Recurring payments via a billing agreement ID (BAID)
