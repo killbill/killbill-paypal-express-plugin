@@ -36,87 +36,109 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   end
 
   it 'should generate forms correctly' do
-    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, [], @call_context)
-    validate_form(form)
-    validate_nil_form_property(form, 'kb_payment_id')
-    validate_nil_form_property(form, 'kb_transaction_external_key')
-    token = validate_form_property(form, 'token')
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
 
-    # Verify no payment was created in Kill Bill
-    @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
+    # Verify multiple payments can be triggered for the same payment method
+    n = 2
+    1.upto(n) do
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, [], @call_context)
+      validate_form(form)
+      validate_nil_form_property(form, 'kb_payment_id')
+      validate_nil_form_property(form, 'kb_transaction_external_key')
+      token = validate_form_property(form, 'token')
 
-    # Verify the payment cannot go through without the token
-    purchase_with_missing_token
+      # Verify no payment was created in Kill Bill
+      @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
 
-    properties = []
-    properties << build_property('token', token)
+      # Verify the payment cannot go through without the token
+      purchase_with_missing_token
 
-    # Verify the payment cannot go through until the token is validated
-    purchase_with_invalid_token(properties)
+      properties = []
+      properties << build_property('token', token)
 
-    validate_token(form)
+      # Verify the payment cannot go through until the token is validated
+      purchase_with_invalid_token(properties)
 
-    purchase_and_refund(SecureRandom.uuid, SecureRandom.uuid, properties)
+      validate_token(form)
 
-    # Verify no extra payment was created in Kill Bill by the plugin
-    @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
+      purchase_and_refund(SecureRandom.uuid, SecureRandom.uuid, properties)
 
-    # Verify the token cannot be re-used
-    subsequent_purchase(properties)
+      # Verify no extra payment was created in Kill Bill by the plugin
+      @plugin.kb_apis.proxied_services[:payment_api].payments.should be_empty
 
-    # Verify no token/baid was stored
-    verify_payment_method
+      # Verify the token cannot be re-used
+      subsequent_purchase(properties)
+
+      # Verify no token/baid was stored
+      verify_payment_method
+    end
+
+    # Each loop triggers one successful purchase and one successful refund
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 9 * n
   end
 
   it 'should generate forms with pending payments correctly' do
-    payment_external_key = SecureRandom.uuid
-    properties = @plugin.hash_to_properties(
-      :transaction_external_key => payment_external_key,
-      :create_pending_payment => true
-    )
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
 
-    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
-    validate_form(form)
-    kb_payment_id = validate_form_property(form, 'kb_payment_id')
-    validate_form_property(form, 'kb_transaction_external_key', payment_external_key)
-    token = validate_form_property(form, 'token')
+    # Verify multiple payments can be triggered for the same payment method
+    n = 2
+    1.upto(n) do |i|
+      payment_external_key = SecureRandom.uuid
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          :create_pending_payment => true
+      )
 
-    # Verify the payment was created in Kill Bill
-    @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == 1
-    @plugin.kb_apis.proxied_services[:payment_api].get_payment(kb_payment_id).transactions.first.external_key.should == payment_external_key
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      validate_form(form)
+      kb_payment_id = validate_form_property(form, 'kb_payment_id')
+      validate_form_property(form, 'kb_transaction_external_key', payment_external_key)
+      token = validate_form_property(form, 'token')
 
-    # Verify GET API
-    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
-    payment_infos.size.should == 1
-    payment_infos[0].kb_payment_id.should == kb_payment_id
-    payment_infos[0].transaction_type.should == :PURCHASE
-    payment_infos[0].amount.should be_nil
-    payment_infos[0].currency.should be_nil
-    payment_infos[0].status.should == :PENDING
-    payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
-    payment_infos[0].gateway_error_code.should be_nil
+      # Verify the payment was created in Kill Bill
+      @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == i
+      @plugin.kb_apis.proxied_services[:payment_api].get_payment(kb_payment_id).transactions.first.external_key.should == payment_external_key
 
-    # Verify the payment cannot go through without the token
-    purchase_with_missing_token
+      # Verify GET API
+      payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
+      payment_infos.size.should == 1
+      payment_infos[0].kb_payment_id.should == kb_payment_id
+      payment_infos[0].transaction_type.should == :PURCHASE
+      payment_infos[0].amount.should be_nil
+      payment_infos[0].currency.should be_nil
+      payment_infos[0].status.should == :PENDING
+      payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
+      payment_infos[0].gateway_error_code.should be_nil
 
-    properties = []
-    properties << build_property('token', token)
+      # Verify the payment cannot go through without the token
+      purchase_with_missing_token
 
-    # Verify the payment cannot go through until the token is validated
-    purchase_with_invalid_token(properties)
+      properties = []
+      properties << build_property('token', token)
 
-    validate_token(form)
+      # Verify the payment cannot go through until the token is validated
+      purchase_with_invalid_token(properties)
 
-    purchase_and_refund(kb_payment_id, payment_external_key, properties)
+      validate_token(form)
 
-    # Verify no extra payment was created in Kill Bill by the plugin
-    @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == 1
+      purchase_and_refund(kb_payment_id, payment_external_key, properties)
 
-    # Verify the token cannot be re-used
-    subsequent_purchase(properties)
+      # Verify no extra payment was created in Kill Bill by the plugin
+      @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == i
 
-    # Verify no token/baid was stored
-    verify_payment_method
+      # Verify the token cannot be re-used
+      subsequent_purchase(properties)
+
+      # Verify no token/baid was stored
+      verify_payment_method
+    end
+
+    # Each loop triggers one successful purchase and one successful refund
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 10 * n
   end
 
   private
