@@ -348,9 +348,10 @@ module Killbill #:nodoc:
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
 
+        amount_in_cents = amount.nil? ? nil : to_cents(amount, currency)
         response = @private_api.initiate_express_checkout(kb_account_id,
                                                           context.tenant_id.to_s,
-                                                          amount,
+                                                          amount_in_cents,
                                                           currency,
                                                           with_baid,
                                                           options)
