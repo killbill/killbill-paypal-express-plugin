@@ -66,6 +66,8 @@ curl -v \
      "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>/paymentMethods?isDefault=true"
 ```
 
+#### Without a pending payment
+
 Generate the redirect URL using buildFormDescriptor (this will invoke `SetExpressCheckout`):
 
 ```
@@ -105,7 +107,46 @@ curl -v \
        "amount": "10",
        "currency": "USD"
      }' \
-     "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>/payments?pluginProperty=token=EC-20G53990M6953444J"
+     "http://127.0.0.1:8080/1.0/kb/accounts/<ACCOUNT_ID>"
+```
+
+#### With a pending payment
+
+Generate the redirect URL using buildFormDescriptor (this will invoke `SetExpressCheckout`):
+
+```
+curl -v \
+     -X POST \
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     -d '{
+       "formFields": [{
+         "key": "amount",
+         "value": 10
+       },{
+         "key": "currency",
+         "value": "USD"
+       }]
+     }' \
+     "http://127.0.0.1:8080/1.0/kb/paymentGateways/hosted/form/<ACCOUNT_ID>?pluginProperty=create_pending_payment=true"
+```
+
+The customer should be redirected to the url specified in the `formUrl` entry of the response, e.g. https://www.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=EC-20G53990M6953444J.
+
+Once the customer comes back from the PayPal flow, complete the payment (the payment id and external key are returned as part of the buildFormDescriptor call):
+
+```
+curl -v \
+     -X PUT \
+     -u admin:password \
+     -H 'X-Killbill-ApiKey: bob' \
+     -H 'X-Killbill-ApiSecret: lazar' \
+     -H 'X-Killbill-CreatedBy: admin' \
+     -H 'Content-Type: application/json' \
+     "http://127.0.0.1:8080/1.0/kb/payments/<PAYMENT_ID>/payments"
 ```
 
 ### Recurring payments via a billing agreement ID (BAID)
