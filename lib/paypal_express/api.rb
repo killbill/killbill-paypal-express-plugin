@@ -246,7 +246,7 @@ module Killbill #:nodoc:
         options = properties_to_hash(all_properties)
 
         kb_account = ::Killbill::Plugin::ActiveMerchant::Utils::LazyEvaluator.new { @kb_apis.account_user_api.get_account_by_id(kb_account_id, jcontext) }
-        amount = (options[:amount] || '0').to_i
+        amount = (options[:amount] || '0').to_f
         currency = options[:currency] || kb_account.currency
 
         response = initiate_express_checkout(kb_account_id, amount, currency, all_properties, context)
