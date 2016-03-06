@@ -352,7 +352,9 @@ module Killbill #:nodoc:
         options = {}
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
-        options[:max_amount] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
+        if properties_hash[:max_amount]
+          options[:max_amount] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
+        end
 
         amount_in_cents = amount.nil? ? nil : to_cents(amount, currency)
         response = @private_api.initiate_express_checkout(kb_account_id,
