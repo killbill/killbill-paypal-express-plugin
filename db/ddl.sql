@@ -58,7 +58,7 @@ CREATE TABLE `paypal_express_responses` (
   `kb_payment_transaction_id` varchar(255) DEFAULT NULL,
   `transaction_type` varchar(255) DEFAULT NULL,
   `payment_processor_account_id` varchar(255) DEFAULT NULL,
-  `message` varchar(255) DEFAULT NULL,
+  `message` text DEFAULT NULL,
   `authorization` varchar(255) DEFAULT NULL,
   `fraud_review` tinyint(1) DEFAULT NULL,
   `test` tinyint(1) DEFAULT NULL,
