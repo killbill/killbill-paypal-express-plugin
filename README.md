@@ -217,3 +217,4 @@ Plugin properties
 | zip                          | Billing address zip code                                          |
 | state                        | Billing address state                                             |
 | country                      | Billing address country                                           |
+| max_amount                   | Maximum amount parameter (optional) for SetExpressCheckout call   |
