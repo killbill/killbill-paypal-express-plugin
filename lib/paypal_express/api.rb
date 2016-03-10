@@ -353,9 +353,9 @@ module Killbill #:nodoc:
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
 
-        properties_hash[:max_amount] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
-        if properties_hash[:max_amount]
-          max_amount_in_cents = to_cents((properties_hash[:max_amount] || '0').to_f, currency)
+        max_amount_value = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
+        if max_amount_value
+          max_amount_in_cents = to_cents((max_amount_value || '0').to_f, currency)
           options[:max_amount] = max_amount_in_cents
         end
 
