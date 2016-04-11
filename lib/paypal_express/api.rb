@@ -4,6 +4,7 @@ module Killbill #:nodoc:
 
       def initialize
         gateway_builder = Proc.new do |config|
+          ::ActiveMerchant::Billing::PaypalExpressGateway.application_id = config[:button_source] || 'killbill_SP'
           ::ActiveMerchant::Billing::PaypalExpressGateway.new :signature => config[:signature],
                                                               :login     => config[:login],
                                                               :password  => config[:password]
