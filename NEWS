@@ -1,3 +1,6 @@
+4.1.2
+    Configure ButtonSource parameter
+
 4.1.1
     Add support for max_amount parameter
     Update message column in paypal_express_reponses to text
