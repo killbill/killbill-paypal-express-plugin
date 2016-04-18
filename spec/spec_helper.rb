@@ -18,7 +18,7 @@ ActiveRecord::Base.establish_connection(
     :database => 'test.db'
 )
 # For debugging
-#ActiveRecord::Base.logger = Logger.new(STDOUT)
+# ActiveRecord::Base.logger = Logger.new(STDOUT)
 # Create the schema
 require File.expand_path(File.dirname(__FILE__) + '../../db/schema.rb')
 
@@ -40,5 +40,18 @@ class PaypalExpressJavaPaymentApi < ::Killbill::Plugin::ActiveMerchant::RSpec::F
     @plugin.purchase_payment(kb_account.id, kb_payment.id, kb_payment.transactions.last.id, kb_payment_method_id, amount, currency, properties, rcontext)
 
     kb_payment
+  end
+
+  def create_authorization(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, payment_external_key, payment_transaction_external_key, properties, context)
+    kb_payment = add_payment(kb_payment_id || SecureRandom.uuid, SecureRandom.uuid, payment_transaction_external_key, :AUTHORIZE)
+
+    rcontext = context.to_ruby(context)
+    @plugin.authorize_payment(kb_account.id, kb_payment.id, kb_payment.transactions.last.id, kb_payment_method_id, amount, currency, properties, rcontext)
+
+    kb_payment
+  end
+
+  def delete_all_payments
+    @payments = []
   end
 end
