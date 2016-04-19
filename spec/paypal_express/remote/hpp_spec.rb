@@ -33,6 +33,8 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   before(:each) do
     ::Killbill::PaypalExpress::PaypalExpressTransaction.delete_all
     ::Killbill::PaypalExpress::PaypalExpressResponse.delete_all
+    # clean the payments before each spec to avoid one influences each other
+    @plugin.kb_apis.proxied_services[:payment_api].delete_all_payments
   end
 
   it 'should generate forms correctly' do
@@ -141,6 +143,137 @@ describe Killbill::PaypalExpress::PaymentPlugin do
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 9 * n
   end
 
+  it 'should generate forms and perform auth, capture and refund correctly' do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+    # Verify the authorization cannot go through without the token
+    authorize_with_missing_token
+
+    # Verify multiple payments can be triggered for the same payment method
+    n = 2
+    1.upto(n) do |i|
+      payment_external_key = SecureRandom.uuid
+      is_pending_payment_test = i % 2 == 1 ? false : true
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          # test both with and without pending payments
+          :create_pending_payment => is_pending_payment_test,
+          :auth_mode => true
+      )
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      validate_form(form)
+      token = validate_form_property(form, 'token')
+      # Verify payments were created when create_pending_payment is true
+      @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == i / 2
+      if is_pending_payment_test
+        kb_payment_id = validate_form_property(form, 'kb_payment_id')
+        validate_form_property(form, 'kb_transaction_external_key', payment_external_key)
+        @plugin.kb_apis.proxied_services[:payment_api].get_payment(kb_payment_id).transactions.first.external_key.should == payment_external_key
+        # Verify GET API
+        payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+        payment_infos.size.should == 1
+        payment_infos[0].kb_payment_id.should == kb_payment_id
+        payment_infos[0].transaction_type.should == :AUTHORIZE
+        payment_infos[0].amount.should be_nil
+        payment_infos[0].currency.should be_nil
+        payment_infos[0].status.should == :PENDING
+        payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
+        payment_infos[0].gateway_error_code.should be_nil
+      else
+        kb_payment_id = SecureRandom.uuid
+        validate_nil_form_property(form, 'kb_payment_id')
+        validate_nil_form_property(form, 'kb_transaction_external_key')
+      end
+
+      properties = []
+      properties << build_property(:token, token)
+      # Verify the payment cannot be authorized without the token being validated
+      authorize_with_invalid_token(properties)
+      # Go to PayPal to validate the token
+      validate_token(form)
+
+      # Verify auth, capture and refund
+      authorize_capture_and_refund(kb_payment_id, payment_external_key, properties)
+
+      # Verify no extra payment was created in Kill Bill by the plugin
+      @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == (i / 2)
+
+      # Verify no token/baid was stored
+      verify_payment_method
+    end
+
+    # Each loop triggers one successful auth, one successful capture and one successful refund
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 3 * n
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 15 * n / 2 + 7 * n % 2
+  end
+
+  it 'should perform auth and void correctly' do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+    # Verify multiple payments can be triggered for the same payment method
+    n = 2
+    1.upto(n) do |i|
+      payment_external_key = SecureRandom.uuid
+      is_pending_payment_test = i % 2 == 1 ? false : true
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          :create_pending_payment => is_pending_payment_test,
+          :auth_mode => true
+      )
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      validate_form(form)
+      token = validate_form_property(form, 'token')
+      if is_pending_payment_test
+        kb_payment_id = validate_form_property(form, 'kb_payment_id')
+      else
+        kb_payment_id = SecureRandom.uuid
+      end
+
+      # Go to PayPal to validate the token
+      validate_token(form)
+
+      properties = []
+      properties << build_property('token', token)
+
+      authorize_and_void(kb_payment_id, payment_external_key, properties)
+
+      # Verify no extra payment was created in Kill Bill by the plugin
+      @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == i / 2
+    end
+
+    # Each loop triggers one successful authorize and one successful void
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 9 * n / 2 + 5 * n % 2
+  end
+
+  it 'should not capture the same transaction twice with full amount' do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+      payment_external_key = SecureRandom.uuid
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          :create_pending_payment => true,
+          :auth_mode => true
+      )
+
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      validate_form(form)
+      kb_payment_id = validate_form_property(form, 'kb_payment_id')
+      validate_form_property(form, 'kb_transaction_external_key', payment_external_key)
+      token = validate_form_property(form, 'token')
+
+      properties = []
+      properties << build_property('token', token)
+      properties << build_property('auth_mode', 'true')
+
+      validate_token(form)
+
+      authorize_and_double_capture(kb_payment_id, payment_external_key, properties)
+  end
+
   private
 
   def validate_form(form)
@@ -211,16 +344,234 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[1].gateway_error_code.should be_nil
   end
 
+  def authorize_capture_and_refund(kb_payment_id, payment_external_key, properties)
+    # Trigger the authorize
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
+
+    # Verify GET AUTHORIZED PAYMENT
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[0].properties, 'paymentInfoPaymentStatus').should == 'Pending'
+    find_value_from_properties(payment_infos[0].properties, 'paymentInfoPendingReason').should == 'authorization'
+
+    # Trigger the capture
+    payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :CAPTURE
+
+    # Verify GET CAPTURED PAYMENT
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    # Two expected transactions: one auth and one capture
+    payment_infos.size.should == 2
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[1].kb_payment_id.should == kb_payment_id
+    payment_infos[1].transaction_type.should == :CAPTURE
+    payment_infos[1].amount.should == @amount
+    payment_infos[1].currency.should == @currency
+    payment_infos[1].status.should == :PROCESSED
+    payment_infos[1].gateway_error.should == 'Success'
+    payment_infos[1].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[1].properties, 'paymentInfoPaymentStatus').should == 'Completed'
+
+    # Try a full refund
+    refund_response = @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, [], @call_context)
+    refund_response.status.should eq(:PROCESSED), refund_response.gateway_error
+    refund_response.amount.should == @amount
+    refund_response.transaction_type.should == :REFUND
+
+    # Verify GET API
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 3
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[1].kb_payment_id.should == kb_payment_id
+    payment_infos[1].transaction_type.should == :CAPTURE
+    payment_infos[1].amount.should == @amount
+    payment_infos[1].currency.should == @currency
+    payment_infos[1].status.should == :PROCESSED
+    payment_infos[1].gateway_error.should == 'Success'
+    payment_infos[1].gateway_error_code.should be_nil
+    payment_infos[2].kb_payment_id.should.should == kb_payment_id
+    payment_infos[2].transaction_type.should == :REFUND
+    payment_infos[2].amount.should == @amount
+    payment_infos[2].currency.should == @currency
+    payment_infos[2].status.should == :PROCESSED
+    payment_infos[2].gateway_error.should == 'Success'
+    payment_infos[2].gateway_error_code.should be_nil
+  end
+
+  def authorize_and_double_capture(kb_payment_id, payment_external_key, properties)
+    # Trigger the authorize
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
+
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+
+    # Trigger the capture
+    payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :CAPTURE
+
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 2
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[1].kb_payment_id.should == kb_payment_id
+    payment_infos[1].transaction_type.should == :CAPTURE
+    payment_infos[1].amount.should == @amount
+    payment_infos[1].currency.should == @currency
+    payment_infos[1].status.should == :PROCESSED
+    payment_infos[1].gateway_error.should == 'Success'
+    payment_infos[1].gateway_error_code.should be_nil
+
+    # Trigger a capture again with full amount
+    payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+    payment_response.status.should eq(:ERROR), payment_response.gateway_error
+    payment_response.amount.should == nil
+    payment_response.transaction_type.should == :CAPTURE
+
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 3
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[1].kb_payment_id.should == kb_payment_id
+    payment_infos[1].transaction_type.should == :CAPTURE
+    payment_infos[1].amount.should == @amount
+    payment_infos[1].currency.should == @currency
+    payment_infos[1].status.should == :PROCESSED
+    payment_infos[1].gateway_error.should == 'Success'
+    payment_infos[1].gateway_error_code.should be_nil
+    payment_infos[2].kb_payment_id.should.should == kb_payment_id
+    payment_infos[2].transaction_type.should == :CAPTURE
+    payment_infos[2].amount.should be_nil
+    payment_infos[2].currency.should be_nil
+    payment_infos[2].status.should == :ERROR
+    payment_infos[2].gateway_error.should == 'Authorization has already been completed.'
+    payment_infos[2].gateway_error_code.should be_nil
+  end
+
+  def authorize_and_void(kb_payment_id, payment_external_key, properties)
+    # Trigger the authorize
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
+
+    # Verify get_payment_info
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+
+    # Trigger the void
+    payment_response = @plugin.void_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.transaction_type.should == :VOID
+
+    # Verify get_payment_info
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    # Two expected transactions: one auth and one capture
+    payment_infos.size.should == 2
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should == @amount
+    payment_infos[0].currency.should == @currency
+    payment_infos[0].status.should == :PROCESSED
+    payment_infos[0].gateway_error.should == 'Success'
+    payment_infos[0].gateway_error_code.should be_nil
+    payment_infos[1].kb_payment_id.should == kb_payment_id
+    payment_infos[1].transaction_type.should == :VOID
+    payment_infos[1].status.should == :PROCESSED
+    payment_infos[1].gateway_error.should == 'Success'
+    payment_infos[1].gateway_error_code.should be_nil
+  end
+
   def purchase_with_missing_token
     failed_purchase([], :CANCELED, 'Could not find the payer_id: the token is missing', 'RuntimeError')
+  end
+
+  def authorize_with_missing_token
+    failed_authorize([], :CANCELED, 'Could not find the payer_id: the token is missing', 'RuntimeError')
   end
 
   def purchase_with_invalid_token(purchase_properties)
     failed_purchase(purchase_properties, :CANCELED, "Could not find the payer_id for token #{properties_to_hash(purchase_properties)[:token]}", 'RuntimeError')
   end
 
+  def authorize_with_invalid_token(authorize_properties)
+    failed_authorize(authorize_properties, :CANCELED, "Could not find the payer_id for token #{properties_to_hash(authorize_properties)[:token]}", 'RuntimeError')
+  end
+
   def subsequent_purchase(purchase_properties)
     failed_purchase(purchase_properties, :ERROR, 'A successful transaction has already been completed for this token.')
+  end
+
+  def failed_authorize(authorize_properties, status, msg, gateway_error_code=nil)
+    kb_payment_id = SecureRandom.uuid
+
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, authorize_properties, @call_context)
+    payment_response.status.should eq(status), payment_response.gateway_error
+    payment_response.amount.should be_nil
+    payment_response.transaction_type.should == :AUTHORIZE
+
+    # Verify GET API
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].transaction_type.should == :AUTHORIZE
+    payment_infos[0].amount.should be_nil
+    payment_infos[0].currency.should be_nil
+    payment_infos[0].status.should == status
+    payment_infos[0].gateway_error.should == msg
+    payment_infos[0].gateway_error_code.should == gateway_error_code
   end
 
   def failed_purchase(purchase_properties, status, msg, gateway_error_code=nil)
