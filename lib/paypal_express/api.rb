@@ -29,72 +29,7 @@ module Killbill #:nodoc:
       end
 
       def authorize_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-
-        payment_processor_account_id = find_value_from_properties(properties, 'payment_processor_account_id')
-
-        # Callback from the plugin itself (HPP flow)
-        if find_value_from_properties(properties, 'from_hpp') == 'true'
-          token = find_value_from_properties(properties, 'token')
-
-          response = @response_model.create(:api_call                     => :build_form_descriptor,
-                                            :kb_account_id                => kb_account_id,
-                                            :kb_payment_id                => kb_payment_id,
-                                            :kb_payment_transaction_id    => kb_payment_transaction_id,
-                                            :transaction_type             => :AUTHORIZE,
-                                            :authorization                => token,
-                                            :payment_processor_account_id => payment_processor_account_id,
-                                            :kb_tenant_id                 => context.tenant_id,
-                                            :success                      => true,
-                                            :created_at                   => Time.now.utc,
-                                            :updated_at                   => Time.now.utc,
-                                            :message                      => { :payment_plugin_status => :PENDING }.to_json)
-          transaction          = response.to_transaction_info_plugin(nil)
-          transaction.amount   = amount
-          transaction.currency = currency
-          transaction
-        else
-          options = {}
-          add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
-
-          # We have a baid on file
-          if options[:token]
-            gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-              gateway.authorize_reference_transaction(amount_in_cents, options)
-            end
-          else
-            options[:token]    = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
-            gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-              gateway.authorize(amount_in_cents, options)
-            end
-          end
-
-          # Populate the Payer id if missing
-          options[:payer_id] = find_value_from_properties(properties, 'payer_id')
-          begin
-            options[:payer_id] ||= find_payer_id(options[:token],
-                                                 kb_account_id,
-                                                 context.tenant_id,
-                                                 properties_to_hash(properties))
-          rescue => e
-            # Maybe invalid token?
-            response = @response_model.create(:api_call                     => :authorize,
-                                              :kb_account_id                => kb_account_id,
-                                              :kb_payment_id                => kb_payment_id,
-                                              :kb_payment_transaction_id    => kb_payment_transaction_id,
-                                              :transaction_type             => :AUTHORIZE,
-                                              :authorization                => nil,
-                                              :payment_processor_account_id => payment_processor_account_id,
-                                              :kb_tenant_id                 => context.tenant_id,
-                                              :success                      => false,
-                                              :created_at                   => Time.now.utc,
-                                              :updated_at                   => Time.now.utc,
-                                              :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
-            return response.to_transaction_info_plugin(nil)
-          end
-
-          properties = merge_properties(properties, options)
-          dispatch_to_gateways(:authorize, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
-        end
+        authorize_or_purchase_payment kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, true
       end
 
       def capture_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
@@ -110,73 +45,8 @@ module Killbill #:nodoc:
       end
 
       def purchase_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context)
-        payment_processor_account_id = find_value_from_properties(properties, 'payment_processor_account_id')
-
-        # Callback from the plugin itself (HPP flow)
-        if find_value_from_properties(properties, 'from_hpp') == 'true'
-          token = find_value_from_properties(properties, 'token')
-
-          response = @response_model.create(:api_call                     => :build_form_descriptor,
-                                            :kb_account_id                => kb_account_id,
-                                            :kb_payment_id                => kb_payment_id,
-                                            :kb_payment_transaction_id    => kb_payment_transaction_id,
-                                            :transaction_type             => :PURCHASE,
-                                            :authorization                => token,
-                                            :payment_processor_account_id => payment_processor_account_id,
-                                            :kb_tenant_id                 => context.tenant_id,
-                                            :success                      => true,
-                                            :created_at                   => Time.now.utc,
-                                            :updated_at                   => Time.now.utc,
-                                            :message                      => { :payment_plugin_status => :PENDING }.to_json)
-          transaction          = response.to_transaction_info_plugin(nil)
-          transaction.amount   = amount
-          transaction.currency = currency
-          transaction
-        else
-          options = {}
-          add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
-
-          # We have a baid on file
-          if options[:token]
-            gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-              # Can't use default implementation: the purchase signature is for one-off payments only
-              gateway.reference_transaction(amount_in_cents, options)
-            end
-          else
-            # One-off payment
-            options[:token]    = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
-            gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-              gateway.purchase(amount_in_cents, options)
-            end
-          end
-
-          # Populate the Payer id if missing
-          options[:payer_id] = find_value_from_properties(properties, 'payer_id')
-          begin
-            options[:payer_id] ||= find_payer_id(options[:token],
-                                                 kb_account_id,
-                                                 context.tenant_id,
-                                                 properties_to_hash(properties))
-          rescue => e
-            # Maybe invalid token?
-            response = @response_model.create(:api_call                     => :purchase,
-                                              :kb_account_id                => kb_account_id,
-                                              :kb_payment_id                => kb_payment_id,
-                                              :kb_payment_transaction_id    => kb_payment_transaction_id,
-                                              :transaction_type             => :PURCHASE,
-                                              :authorization                => nil,
-                                              :payment_processor_account_id => payment_processor_account_id,
-                                              :kb_tenant_id                 => context.tenant_id,
-                                              :success                      => false,
-                                              :created_at                   => Time.now.utc,
-                                              :updated_at                   => Time.now.utc,
-                                              :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
-            return response.to_transaction_info_plugin(nil)
-          end
-
-          properties = merge_properties(properties, options)
-          dispatch_to_gateways(:purchase, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
-        end
+        # by default, this call will purchase a payment
+        authorize_or_purchase_payment kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context
       end
 
       def void_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, properties, context)
@@ -442,6 +312,91 @@ module Killbill #:nodoc:
         end
 
         response
+      end
+
+      def authorize_or_purchase_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, is_authorize = false)
+        payment_processor_account_id = find_value_from_properties(properties, 'payment_processor_account_id')
+        transaction_type = is_authorize ? :AUTHORIZE : :PURCHASE
+        api_call_type = is_authorize ? :authorize : :purchase
+
+        # Callback from the plugin itself (HPP flow)
+        if find_value_from_properties(properties, 'from_hpp') == 'true'
+          token = find_value_from_properties(properties, 'token')
+
+          response = @response_model.create(:api_call                     => :build_form_descriptor,
+                                            :kb_account_id                => kb_account_id,
+                                            :kb_payment_id                => kb_payment_id,
+                                            :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                            :transaction_type             => transaction_type,
+                                            :authorization                => token,
+                                            :payment_processor_account_id => payment_processor_account_id,
+                                            :kb_tenant_id                 => context.tenant_id,
+                                            :success                      => true,
+                                            :created_at                   => Time.now.utc,
+                                            :updated_at                   => Time.now.utc,
+                                            :message                      => { :payment_plugin_status => :PENDING }.to_json)
+          transaction          = response.to_transaction_info_plugin(nil)
+          transaction.amount   = amount
+          transaction.currency = currency
+          transaction
+        else
+          options = {}
+          add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+
+          # We have a baid on file
+          if options[:token]
+            if is_authorize
+              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+                # Can't use default implementation: the purchase signature is for one-off payments only
+                gateway.authorize_reference_transaction(amount_in_cents, options)
+              end
+            else
+              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+                # Can't use default implementation: the purchase signature is for one-off payments only
+                gateway.reference_transaction(amount_in_cents, options)
+              end
+            end
+          else
+            # One-off payment
+            options[:token]    = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
+            if is_authorize
+              gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+                gateway.authorize(amount_in_cents, options)
+              end
+            else
+              gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+                gateway.purchase(amount_in_cents, options)
+              end
+            end
+          end
+
+          # Populate the Payer id if missing
+          options[:payer_id] = find_value_from_properties(properties, 'payer_id')
+          begin
+            options[:payer_id] ||= find_payer_id(options[:token],
+                                                 kb_account_id,
+                                                 context.tenant_id,
+                                                 properties_to_hash(properties))
+          rescue => e
+            # Maybe invalid token?
+            response = @response_model.create(:api_call                     => api_call_type,
+                                              :kb_account_id                => kb_account_id,
+                                              :kb_payment_id                => kb_payment_id,
+                                              :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                              :transaction_type             => transaction_type,
+                                              :authorization                => nil,
+                                              :payment_processor_account_id => payment_processor_account_id,
+                                              :kb_tenant_id                 => context.tenant_id,
+                                              :success                      => false,
+                                              :created_at                   => Time.now.utc,
+                                              :updated_at                   => Time.now.utc,
+                                              :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
+            return response.to_transaction_info_plugin(nil)
+          end
+
+          properties = merge_properties(properties, options)
+          dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
+        end
       end
     end
   end

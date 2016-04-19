@@ -218,3 +218,4 @@ Plugin properties
 | state                        | Billing address state                                             |
 | country                      | Billing address country                                           |
 | max_amount                   | Maximum amount parameter (optional) for SetExpressCheckout call   |
+| auth_mode                    | If true, [Authorization Payment Action](https://developer.paypal.com/docs/classic/express-checkout/integration-guide/ECRelatedAPIOps/) is adopted. Otherwise, Sale Payment Action is used.|
