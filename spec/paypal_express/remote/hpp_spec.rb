@@ -152,6 +152,8 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Verify multiple payments can be triggered for the same payment method
     n = 2
+    payment_processor_account_id = 'paypal_test_account'
+    default_processor_id = 'default'
     1.upto(n) do |i|
       payment_external_key = SecureRandom.uuid
       is_pending_payment_test = i % 2 == 1 ? false : true
@@ -159,6 +161,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
           :transaction_external_key => payment_external_key,
           # test both with and without pending payments
           :create_pending_payment => is_pending_payment_test,
+          :payment_processor_account_id => payment_processor_account_id,
           :auth_mode => true
       )
       form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
@@ -180,6 +183,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
         payment_infos[0].status.should == :PENDING
         payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
         payment_infos[0].gateway_error_code.should be_nil
+        find_value_from_properties(payment_infos[0].properties, :payment_processor_account_id).should == payment_processor_account_id
       else
         kb_payment_id = SecureRandom.uuid
         validate_nil_form_property(form, 'kb_payment_id')
@@ -194,7 +198,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       validate_token(form)
 
       # Verify auth, capture and refund
-      authorize_capture_and_refund(kb_payment_id, payment_external_key, properties)
+      authorize_capture_and_refund(kb_payment_id, payment_external_key, properties, is_pending_payment_test ? payment_processor_account_id : default_processor_id)
 
       # Verify no extra payment was created in Kill Bill by the plugin
       @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == (i / 2)
@@ -214,13 +218,16 @@ describe Killbill::PaypalExpress::PaymentPlugin do
 
     # Verify multiple payments can be triggered for the same payment method
     n = 2
+    payment_processor_account_id = 'paypal_test_account'
+    default_processor_id = 'default'
     1.upto(n) do |i|
       payment_external_key = SecureRandom.uuid
       is_pending_payment_test = i % 2 == 1 ? false : true
       properties = @plugin.hash_to_properties(
           :transaction_external_key => payment_external_key,
           :create_pending_payment => is_pending_payment_test,
-          :auth_mode => true
+          :auth_mode => true,
+          :payment_processor_account_id => payment_processor_account_id
       )
       form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
       validate_form(form)
@@ -237,7 +244,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       properties = []
       properties << build_property('token', token)
 
-      authorize_and_void(kb_payment_id, payment_external_key, properties)
+      authorize_and_void(kb_payment_id, payment_external_key, properties, is_pending_payment_test ? payment_processor_account_id : default_processor_id)
 
       # Verify no extra payment was created in Kill Bill by the plugin
       @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == i / 2
@@ -272,6 +279,47 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       validate_token(form)
 
       authorize_and_double_capture(kb_payment_id, payment_external_key, properties)
+  end
+
+  it 'should find the payment processor id from pending authorization or purchase' do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+    payment_processor_account_id = 'paypal_test_account'
+
+    properties = @plugin.hash_to_properties(
+        :transaction_external_key => SecureRandom.uuid,
+        :create_pending_payment => true,
+        :auth_mode => true,
+        :payment_processor_account_id => payment_processor_account_id
+    )
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+    kb_payment_id = validate_form_property(form, 'kb_payment_id')
+    @plugin.send(:find_pending_payment_processor_id, @pm.kb_account_id, kb_payment_id, properties, @call_context).should == payment_processor_account_id
+
+    properties = @plugin.hash_to_properties(
+        :transaction_external_key => SecureRandom.uuid,
+        :auth_mode => true,
+        :payment_processor_account_id => payment_processor_account_id
+    )
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+    @plugin.send(:find_pending_payment_processor_id, @pm.kb_account_id, SecureRandom.uuid, properties, @call_context).should be_nil
+
+    properties = @plugin.hash_to_properties(
+        :transaction_external_key => SecureRandom.uuid,
+        :create_pending_payment => true,
+        :payment_processor_account_id => payment_processor_account_id
+    )
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+    kb_payment_id = validate_form_property(form, 'kb_payment_id')
+    @plugin.send(:find_pending_payment_processor_id, @pm.kb_account_id, kb_payment_id, properties, @call_context).should == payment_processor_account_id
+
+    properties = @plugin.hash_to_properties(
+        :transaction_external_key => SecureRandom.uuid,
+        :payment_processor_account_id => payment_processor_account_id
+    )
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+    @plugin.send(:find_pending_payment_processor_id, @pm.kb_account_id, SecureRandom.uuid, properties, @call_context).should be_nil
   end
 
   private
@@ -344,7 +392,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[1].gateway_error_code.should be_nil
   end
 
-  def authorize_capture_and_refund(kb_payment_id, payment_external_key, properties)
+  def authorize_capture_and_refund(kb_payment_id, payment_external_key, properties, payment_processor_account_id = 'default')
     # Trigger the authorize
     payment_response = @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
@@ -363,6 +411,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].gateway_error_code.should be_nil
     find_value_from_properties(payment_infos[0].properties, 'paymentInfoPaymentStatus').should == 'Pending'
     find_value_from_properties(payment_infos[0].properties, 'paymentInfoPendingReason').should == 'authorization'
+    find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
 
     # Trigger the capture
     payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
@@ -381,6 +430,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].status.should == :PROCESSED
     payment_infos[0].gateway_error.should == 'Success'
     payment_infos[0].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
     payment_infos[1].kb_payment_id.should == kb_payment_id
     payment_infos[1].transaction_type.should == :CAPTURE
     payment_infos[1].amount.should == @amount
@@ -389,6 +439,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[1].gateway_error.should == 'Success'
     payment_infos[1].gateway_error_code.should be_nil
     find_value_from_properties(payment_infos[1].properties, 'paymentInfoPaymentStatus').should == 'Completed'
+    find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
 
     # Try a full refund
     refund_response = @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, [], @call_context)
@@ -406,6 +457,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].status.should == :PROCESSED
     payment_infos[0].gateway_error.should == 'Success'
     payment_infos[0].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
     payment_infos[1].kb_payment_id.should == kb_payment_id
     payment_infos[1].transaction_type.should == :CAPTURE
     payment_infos[1].amount.should == @amount
@@ -413,6 +465,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[1].status.should == :PROCESSED
     payment_infos[1].gateway_error.should == 'Success'
     payment_infos[1].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
     payment_infos[2].kb_payment_id.should.should == kb_payment_id
     payment_infos[2].transaction_type.should == :REFUND
     payment_infos[2].amount.should == @amount
@@ -420,6 +473,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[2].status.should == :PROCESSED
     payment_infos[2].gateway_error.should == 'Success'
     payment_infos[2].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[2].properties, 'payment_processor_account_id').should == payment_processor_account_id
   end
 
   def authorize_and_double_capture(kb_payment_id, payment_external_key, properties)
@@ -493,7 +547,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[2].gateway_error_code.should be_nil
   end
 
-  def authorize_and_void(kb_payment_id, payment_external_key, properties)
+  def authorize_and_void(kb_payment_id, payment_external_key, properties, payment_processor_account_id = 'default')
     # Trigger the authorize
     payment_response = @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
@@ -510,6 +564,7 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].status.should == :PROCESSED
     payment_infos[0].gateway_error.should == 'Success'
     payment_infos[0].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
 
     # Trigger the void
     payment_response = @plugin.void_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, properties, @call_context)
@@ -527,11 +582,13 @@ Note: you need to log-in with a paypal sandbox account (create one here: https:/
     payment_infos[0].status.should == :PROCESSED
     payment_infos[0].gateway_error.should == 'Success'
     payment_infos[0].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
     payment_infos[1].kb_payment_id.should == kb_payment_id
     payment_infos[1].transaction_type.should == :VOID
     payment_infos[1].status.should == :PROCESSED
     payment_infos[1].gateway_error.should == 'Success'
     payment_infos[1].gateway_error_code.should be_nil
+    find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
   end
 
   def purchase_with_missing_token

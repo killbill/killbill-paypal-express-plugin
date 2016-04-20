@@ -113,7 +113,7 @@ module Killbill #:nodoc:
           }
         else
           # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
-          payer_id = find_payer_id(token, kb_account_id, context.tenant_id, properties_to_hash(properties))
+          payer_id = find_payer_id(token, kb_account_id, context.tenant_id, find_value_from_properties(properties, :payment_processor_account_id))
           options  = {
               :paypal_express_token    => token,
               :paypal_express_payer_id => payer_id
@@ -184,8 +184,10 @@ module Killbill #:nodoc:
         # By default, pending payments are not created for HPP
         create_pending_payment = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :create_pending_payment)
         if create_pending_payment
-          custom_props = hash_to_properties(:from_hpp => true,
-                                            :token    => response.token)
+          payment_processor_account_id = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :payment_processor_account_id)
+          custom_props = hash_to_properties(:from_hpp                     => true,
+                                            :token                        => response.token,
+                                            :payment_processor_account_id => payment_processor_account_id)
           payment_external_key = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :payment_external_key)
           transaction_external_key = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :transaction_external_key)
 
@@ -258,11 +260,11 @@ module Killbill #:nodoc:
         @response_model.last_token(kb_account_id, kb_tenant_id)
       end
 
-      def find_payer_id(token, kb_account_id, kb_tenant_id, options = {})
+      def find_payer_id(token, kb_account_id, kb_tenant_id, payment_processor_account_id)
         raise 'Could not find the payer_id: the token is missing' if token.blank?
 
         # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
-        payment_processor_account_id = options[:payment_processor_account_id] || :default
+        payment_processor_account_id = payment_processor_account_id || :default
         gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
         gw_response                  = gateway.details_for(token)
         response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, kb_tenant_id, payment_processor_account_id)
@@ -293,6 +295,7 @@ module Killbill #:nodoc:
         options = {}
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
+        options[:payment_processor_account_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
 
         max_amount_value = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
         if max_amount_value
@@ -342,6 +345,9 @@ module Killbill #:nodoc:
         else
           options = {}
           add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+          # Find the payment_processor_id if not provided
+          payment_processor_account_id ||= find_pending_payment_processor_id(kb_account_id, kb_payment_id, properties, context)
+          options[:payment_processor_account_id] = payment_processor_account_id
 
           # We have a baid on file
           if options[:token]
@@ -358,7 +364,7 @@ module Killbill #:nodoc:
             end
           else
             # One-off payment
-            options[:token]    = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
+            options[:token] = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
             if is_authorize
               gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 gateway.authorize(amount_in_cents, options)
@@ -376,7 +382,7 @@ module Killbill #:nodoc:
             options[:payer_id] ||= find_payer_id(options[:token],
                                                  kb_account_id,
                                                  context.tenant_id,
-                                                 properties_to_hash(properties))
+                                                 payment_processor_account_id)
           rescue => e
             # Maybe invalid token?
             response = @response_model.create(:api_call                     => api_call_type,
@@ -397,6 +403,16 @@ module Killbill #:nodoc:
           properties = merge_properties(properties, options)
           dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
         end
+      end
+
+      def find_pending_payment_processor_id(kb_account_id, kb_payment_id, properties, context)
+        # Since this is called at complete-auth/purchase step, only one record should be returned if a pending payment is created in the initial step
+        payment_infos = get_payment_info(kb_account_id, kb_payment_id, properties, context)
+        if payment_infos != nil && payment_infos.size > 0
+          return find_value_from_properties(payment_infos.last.properties, :payment_processor_account_id)
+        end
+        # Cannot find any payment info. Pending payment was not created in the first step.
+        nil
       end
     end
   end

@@ -1,8 +1,9 @@
 :paypal_express:
-  :signature: <%= ENV['SIGNATURE'] %>
-  :login: <%= ENV['LOGIN'] %>
-  :password: <%= ENV['PASSWORD'] %>
-  :test: true
+  - :account_id: paypal_test_account
+    :signature: <%= ENV['SIGNATURE'] %>
+    :login: <%= ENV['LOGIN'] %>
+    :password: <%= ENV['PASSWORD'] %>
+    :test: true
 
 :database:
 # SQLite (development)
