@@ -113,10 +113,13 @@ module Killbill #:nodoc:
           }
         else
           # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
-          payer_id = find_payer_id(token, kb_account_id, context.tenant_id, find_value_from_properties(properties, :payment_processor_account_id))
+          payment_processor_account_id = find_value_from_properties(properties, :payment_processor_account_id)
+          payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, token)
+          payer_id = find_payer_id(token, kb_account_id, context.tenant_id, payment_processor_account_id)
           options  = {
-              :paypal_express_token    => token,
-              :paypal_express_payer_id => payer_id
+              :paypal_express_token         => token,
+              :paypal_express_payer_id      => payer_id,
+              :payment_processor_account_id => payment_processor_account_id
           }
         end
 
