@@ -345,9 +345,6 @@ module Killbill #:nodoc:
         else
           options = {}
           add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
-          # Find the payment_processor_id if not provided
-          payment_processor_account_id ||= find_pending_payment_processor_id(kb_account_id, kb_payment_id, properties, context)
-          options[:payment_processor_account_id] = payment_processor_account_id
 
           # We have a baid on file
           if options[:token]
@@ -375,6 +372,10 @@ module Killbill #:nodoc:
               end
             end
           end
+
+          # Find the payment_processor_id if not provided
+          payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
+          options[:payment_processor_account_id] = payment_processor_account_id
 
           # Populate the Payer id if missing
           options[:payer_id] = find_value_from_properties(properties, 'payer_id')
@@ -405,14 +406,8 @@ module Killbill #:nodoc:
         end
       end
 
-      def find_pending_payment_processor_id(kb_account_id, kb_payment_id, properties, context)
-        # Since this is called at complete-auth/purchase step, only one record should be returned if a pending payment is created in the initial step
-        payment_infos = get_payment_info(kb_account_id, kb_payment_id, properties, context)
-        if payment_infos != nil && payment_infos.size > 0
-          return find_value_from_properties(payment_infos.last.properties, :payment_processor_account_id)
-        end
-        # Cannot find any payment info. Pending payment was not created in the first step.
-        nil
+      def find_payment_processor_id_from_initial_call(kb_account_id, kb_tenant_id, token)
+        @response_model.initial_payment_account_processor_id kb_account_id, kb_tenant_id, token
       end
     end
   end

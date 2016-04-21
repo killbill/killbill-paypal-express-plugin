@@ -9,11 +9,10 @@ describe Killbill::PaypalExpress::PaymentPlugin do
       file = File.new(File.join(dir, 'paypal_express.yml'), 'w+')
       file.write(<<-eos)
 :paypal_express:
-  - :account_id: paypal_test_account
-    :signature: 'signature'
-    :login: 'login'
-    :password: 'password'
-    :test: true
+  :signature: 'signature'
+  :login: 'login'
+  :password: 'password'
+  :test: true
 # As defined by spec_helper.rb
 :database:
   :adapter: 'sqlite3'
