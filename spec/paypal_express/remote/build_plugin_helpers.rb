@@ -9,8 +9,14 @@ module BuildPluginHelpers
         file = File.new(File.join(dir, 'paypal_express.yml'), 'w+')
         open('paypal_express.yml', 'r') do |origin_file|
           line_num = 0
+          indent_end = false
           origin_file.each_line do |line|
+            # insert account id line in the second line (paypal_express.yml starting from the first line)
             file.puts(account_line) if line_num == 1
+            # indent the line between account_id and database setting
+            need_indent = line_num == 0 ? false : true
+            indent_end = true if line.strip == ':database:'
+            line = line.strip.indent(4) if need_indent && !indent_end
             file.puts(line)
             line_num += 1
           end
