@@ -1,6 +1,6 @@
 require 'spec_helper'
 require_relative 'build_plugin_helpers'
-require_relative 'baid_helpers'
+require_relative 'baid_spec_helpers'
 
 ActiveMerchant::Billing::Base.mode = :test
 
@@ -234,7 +234,7 @@ shared_examples 'baid_spec_common' do
     context = @plugin.kb_apis.create_context(@call_context.tenant_id)
     fields = @plugin.hash_to_properties(
         :order_id => '1234',
-        :amount => 12,
+        :amount => 12
     )
 
     properties = @plugin.hash_to_properties(
@@ -251,10 +251,9 @@ shared_examples 'baid_spec_common' do
 end
 
 describe Killbill::PaypalExpress::PaymentPlugin do
-
   include ::Killbill::Plugin::ActiveMerchant::RSpec
-  include BuildPluginHelpers
-  include BaidHelpers
+  include ::Killbill::PaypalExpress::BuildPluginHelpers
+  include ::Killbill::PaypalExpress::BaidSpecHelpers
 
   context 'baid test with a single account' do
     # Share the BAID

@@ -1,10 +1,8 @@
 require 'spec_helper'
-require_relative 'hpp_helpers'
+require_relative 'hpp_spec_helpers'
 require_relative 'build_plugin_helpers'
 
 ActiveMerchant::Billing::Base.mode = :test
-
-include ::Killbill::Plugin::ActiveMerchant::RSpec
 
 shared_examples 'hpp_spec_common' do
 
@@ -298,8 +296,9 @@ shared_examples 'hpp_spec_common' do
 end
 
 describe Killbill::PaypalExpress::PaymentPlugin do
-  include HppHelpers
-  include BuildPluginHelpers
+  include ::Killbill::Plugin::ActiveMerchant::RSpec
+  include ::Killbill::PaypalExpress::BuildPluginHelpers
+  include ::Killbill::PaypalExpress::HppSpecHelpers
 
   context 'hpp test with a single account' do
     before(:all) do
