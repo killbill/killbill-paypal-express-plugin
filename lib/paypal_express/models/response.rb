@@ -67,6 +67,16 @@ module Killbill #:nodoc:
         response.nil? ? nil : response.token
       end
 
+      def self.initial_payment_account_processor_id(kb_account_id, kb_tenant_id, token)
+        return nil if token.blank?
+        response = where(:api_call => 'initiate_express_checkout',
+                         :success => true,
+                         :kb_account_id => kb_account_id,
+                         :kb_tenant_id => kb_tenant_id,
+                         :token => token).last
+        response.nil? ? nil : response.payment_processor_account_id
+      end
+
       def to_transaction_info_plugin(transaction=nil)
         t_info_plugin = super(transaction)
 
