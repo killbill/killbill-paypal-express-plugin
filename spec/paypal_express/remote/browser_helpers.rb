@@ -34,7 +34,7 @@ module Killbill
       end
 
       def get_buyer_info
-         YAML.load_file('paypal_express_with_signature.yml')[:paypal_buyer]
+         YAML.load_file('paypal_express.yml')[:paypal_buyer]
       end
     end
   end
