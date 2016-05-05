@@ -1,6 +1,11 @@
+require_relative 'browser_helpers'
+
 module Killbill
   module PaypalExpress
     module BaidSpecHelpers
+
+      include ::Killbill::PaypalExpress::BrowserHelpers
+
       def baid_setup(payment_processor_account_id = nil)
         @call_context = build_call_context
 

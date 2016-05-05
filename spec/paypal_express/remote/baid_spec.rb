@@ -1,7 +1,6 @@
 require 'spec_helper'
 require_relative 'build_plugin_helpers'
 require_relative 'baid_spec_helpers'
-require_relative 'browser_helpers'
 
 ActiveMerchant::Billing::Base.mode = :test
 
@@ -255,9 +254,6 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   include ::Killbill::Plugin::ActiveMerchant::RSpec
   include ::Killbill::PaypalExpress::BuildPluginHelpers
   include ::Killbill::PaypalExpress::BaidSpecHelpers
-  include ::Killbill::PaypalExpress::BrowserHelpers
-
-  let(:buyer_info) { get_buyer_info }
 
   context 'baid test with a single account' do
     # Share the BAID
