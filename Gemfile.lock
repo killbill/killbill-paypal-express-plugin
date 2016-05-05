@@ -154,7 +154,7 @@ DEPENDENCIES
   killbill-paypal-express!
   rake (>= 10.0.0)
   rspec (~> 2.12.0)
-  selenium-webdriver
+  selenium-webdriver (~> 2.53.0)
 
 BUNDLED WITH
    1.11.2

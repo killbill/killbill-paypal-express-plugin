@@ -4,10 +4,6 @@
   :password: <%= ENV['PASSWORD'] %>
   :test: true
 
-:paypal_buyer:
-  :username: <%= ENV['BUYER_USERNAME'] %>
-  :password: <%= ENV['BUYER_PASSWORD'] %>
-
 :database:
 # SQLite (development)
   :adapter: sqlite3
