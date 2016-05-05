@@ -1,6 +1,11 @@
+require_relative 'browser_helpers'
+
 module Killbill
   module PaypalExpress
     module HppSpecHelpers
+
+      include ::Killbill::PaypalExpress::BrowserHelpers
+
       def hpp_setup
         @call_context = build_call_context
         @amount = BigDecimal.new('100')

@@ -4,7 +4,7 @@ module Killbill
   module PaypalExpress
     module BrowserHelpers
       def login_and_confirm(url)
-        if ENV['BUYER_PASSWORD'].blank? || ENV['BUYER_PASSWORD'].blank?
+        if ENV['BUYER_USERNAME'].blank? || ENV['BUYER_PASSWORD'].blank?
           print "\nPlease go to #{url} to proceed and press any key to continue... Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
           $stdin.gets
         else
