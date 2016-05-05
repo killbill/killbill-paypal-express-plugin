@@ -15,9 +15,8 @@ module Killbill
         # Initiate the setup process
         response = create_token(kb_account_id, @call_context.tenant_id, options)
         token = response.token
-        print "\nPlease go to #{@plugin.to_express_checkout_url(response, @call_context.tenant_id)} to proceed and press any key to continue...
-  Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
-        $stdin.gets
+
+        login_and_confirm @plugin.to_express_checkout_url(response, @call_context.tenant_id)
 
         # Complete the setup process
         @properties = []
