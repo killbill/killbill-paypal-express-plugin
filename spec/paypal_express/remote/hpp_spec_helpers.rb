@@ -1,6 +1,11 @@
+require_relative 'browser_helpers'
+
 module Killbill
   module PaypalExpress
     module HppSpecHelpers
+
+      include ::Killbill::PaypalExpress::BrowserHelpers
+
       def hpp_setup
         @call_context = build_call_context
         @amount = BigDecimal.new('100')
@@ -36,9 +41,7 @@ module Killbill
       end
 
       def validate_token(form)
-        print "\nPlease go to #{form.form_url} to proceed and press any key to continue...
-Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
-        $stdin.gets
+        login_and_confirm form.form_url
       end
 
       def purchase_and_refund(kb_payment_id, purchase_payment_external_key, purchase_properties)
