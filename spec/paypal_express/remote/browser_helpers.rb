@@ -9,46 +9,63 @@ module Killbill
           $stdin.gets
         else
           driver = Selenium::WebDriver.for :firefox
-          #login page
+          # Login page
           driver.get url
+
           wait = Selenium::WebDriver::Wait.new(:timeout => 15)
-          driver.switch_to.frame('injectedUl')
+          wait.until {
+            driver.switch_to.frame('injectedUl') rescue nil
+          }
+
           email_element, pwd_element, login_element = wait.until {
-            email_element = driver.find_element(:id, 'email')
-            pwd_element = driver.find_element(:id, 'password')
-            login_element = driver.find_element(:id, 'btnLogin')
-            if email_element.displayed? && pwd_element.displayed? && login_element.displayed?
+            email_element = driver.find_element(:id, 'email') rescue nil
+            pwd_element = driver.find_element(:id, 'password') rescue nil
+            login_element = driver.find_element(:id, 'btnLogin') rescue nil
+            if ready?(email_element, pwd_element, login_element)
               [email_element, pwd_element, login_element]
             else
-              #find the element id from old UI
-              old_email_element = driver.find_element(:id, 'login_email')
-              old_pwd_element = driver.find_element(:id, 'login_password')
-              old_login_element = driver.find_element(:id, 'submitLogin')
-              [old_email_element, old_pwd_element, old_login_element] if (old_email_element.displayed? && old_pwd_element.displayed? && old_login_element.displayed?)
+              # Find the element ids from the old UI
+              old_email_element = driver.find_element(:id, 'login_email') rescue nil
+              old_pwd_element = driver.find_element(:id, 'login_password') rescue nil
+              old_login_element = driver.find_element(:id, 'submitLogin') rescue nil
+              if ready?(old_email_element, old_pwd_element, old_login_element)
+                [old_email_element, old_pwd_element, old_login_element]
+              else
+                false
+              end
             end
           }
           email_element.send_keys(ENV['BUYER_USERNAME'])
           pwd_element.send_keys(ENV['BUYER_PASSWORD'])
           login_element.click
 
-          #confirmation page
+          # Confirmation page
           driver.switch_to.default_content
           confirm_element = wait.until {
-            confirm_element = driver.find_element(:id, 'confirmButtonTop')
-            if confirm_element.displayed? && confirm_element.enabled?
+            confirm_element = driver.find_element(:id, 'confirmButtonTop') rescue nil
+            if ready?(confirm_element)
               confirm_element
             else
-              old_confirm_element = driver.find_element(:id, 'continue_abovefold')
-              old_confirm_element if old_confirm_element.displayed? && old_confirm_element.enabled?
+              old_confirm_element = driver.find_element(:id, 'continue_abovefold') rescue nil
+              ready?(old_confirm_element) ? old_confirm_element : false
             end
           }
-          #wait for page to load. Even if it is displayed and enabled, sometimes the element is still not clickable.
+
+          # Wait for page to load. Even if it is displayed and enabled, sometimes the element is still not clickable.
           sleep 2
           confirm_element.click
 
-          #quit
           driver.quit
         end
+      end
+
+      private
+
+      def ready?(*elements)
+        elements.each do |element|
+          return false unless element && element.displayed? && element.enabled?
+        end
+        true
       end
     end
   end
