@@ -321,13 +321,14 @@ module Killbill #:nodoc:
       end
 
       def authorize_or_purchase_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, is_authorize = false)
-        payment_processor_account_id = find_value_from_properties(properties, 'payment_processor_account_id')
+        properties_hash = properties_to_hash properties
+        payment_processor_account_id = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
         transaction_type = is_authorize ? :AUTHORIZE : :PURCHASE
         api_call_type = is_authorize ? :authorize : :purchase
 
         # Callback from the plugin itself (HPP flow)
-        if find_value_from_properties(properties, 'from_hpp') == 'true'
-          token = find_value_from_properties(properties, 'token')
+        if ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :from_hpp)
+          token = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token)
 
           response = @response_model.create(:api_call                     => :build_form_descriptor,
                                             :kb_account_id                => kb_account_id,
@@ -364,7 +365,7 @@ module Killbill #:nodoc:
             end
           else
             # One-off payment
-            options[:token] = find_value_from_properties(properties, 'token') || find_last_token(kb_account_id, context.tenant_id)
+            options[:token] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token) || find_last_token(kb_account_id, context.tenant_id)
             if is_authorize
               gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 gateway.authorize(amount_in_cents, options)
@@ -381,7 +382,7 @@ module Killbill #:nodoc:
           options[:payment_processor_account_id] = payment_processor_account_id
 
           # Populate the Payer id if missing
-          options[:payer_id] = find_value_from_properties(properties, 'payer_id')
+          options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
           begin
             options[:payer_id] ||= find_payer_id(options[:token],
                                                  kb_account_id,
