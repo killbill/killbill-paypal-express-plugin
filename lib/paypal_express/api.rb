@@ -2,6 +2,8 @@ module Killbill #:nodoc:
   module PaypalExpress #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::ActiveMerchant::PaymentPlugin
 
+      THREE_HOURS_AGO = (3*3600)
+
       def initialize
         gateway_builder = Proc.new do |config|
           ::ActiveMerchant::Billing::PaypalExpressGateway.application_id = config[:button_source] || 'killbill_SP'
@@ -83,15 +85,28 @@ module Killbill #:nodoc:
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
         t_info_plugins = super(kb_account_id, kb_payment_id, properties, context)
+        # Should never happen...
+        return [] if t_info_plugins.nil?
 
         # Completed purchases/authorizations will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase/authorize')
         # Other transaction types don't support the :PENDING state
         target_transaction_types = [:PURCHASE, :AUTHORIZE]
-        is_transaction_pending = t_info_plugins.find { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status != :PENDING }.nil?
+        only_pending_transaction = t_info_plugins.find { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status != :PENDING }.nil?
         t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
 
-        # If only pending transactions exist, return the pending one. Otherwise, only return those non-pending transaction.
-        is_transaction_pending ? t_info_plugins: t_info_plugins_without_pending
+        # If its token has expired, cancel the payment and update the response row.
+        if only_pending_transaction
+          return t_info_plugins unless token_expired(t_info_plugins.last)
+          if cancel_pending_transaction(t_info_plugins.last).nil?
+            logger.warning("Try to cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id} but failed")
+            t_info_plugins
+          else
+            logger.info("Cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id}")
+            super(kb_account_id, kb_payment_id, properties, context)
+          end
+        else
+          t_info_plugins_without_pending
+        end
       end
 
       def search_payments(search_key, offset, limit, properties, context)
@@ -188,9 +203,11 @@ module Killbill #:nodoc:
         create_pending_payment = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :create_pending_payment)
         if create_pending_payment
           payment_processor_account_id = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :payment_processor_account_id)
+          token_expiration_period = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :token_expiration_period)
           custom_props = hash_to_properties(:from_hpp                     => true,
                                             :token                        => response.token,
-                                            :payment_processor_account_id => payment_processor_account_id)
+                                            :payment_processor_account_id => payment_processor_account_id,
+                                            :token_expiration_period      => token_expiration_period)
           payment_external_key = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :payment_external_key)
           transaction_external_key = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :transaction_external_key)
 
@@ -329,7 +346,8 @@ module Killbill #:nodoc:
         # Callback from the plugin itself (HPP flow)
         if ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :from_hpp)
           token = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token)
-
+          message = {:payment_plugin_status => :PENDING,
+                     :token_expiration_period => ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token_expiration_period) || THREE_HOURS_AGO.to_s}
           response = @response_model.create(:api_call                     => :build_form_descriptor,
                                             :kb_account_id                => kb_account_id,
                                             :kb_payment_id                => kb_payment_id,
@@ -341,7 +359,7 @@ module Killbill #:nodoc:
                                             :success                      => true,
                                             :created_at                   => Time.now.utc,
                                             :updated_at                   => Time.now.utc,
-                                            :message                      => { :payment_plugin_status => :PENDING }.to_json)
+                                            :message                      => message.to_json)
           transaction          = response.to_transaction_info_plugin(nil)
           transaction.amount   = amount
           transaction.currency = currency
@@ -412,6 +430,23 @@ module Killbill #:nodoc:
 
       def find_payment_processor_id_from_initial_call(kb_account_id, kb_tenant_id, token)
         @response_model.initial_payment_account_processor_id kb_account_id, kb_tenant_id, token
+      end
+
+      def token_expired(transaction_plugin_info)
+        paypal_response_id = find_value_from_properties(transaction_plugin_info.properties, 'paypalExpressResponseId')
+        response = PaypalExpressResponse.find_by(:id => paypal_response_id)
+        begin
+          message_details = JSON.parse response.message
+          expiration_period = (message_details['token_expiration_period'] || THREE_HOURS_AGO).to_i
+        rescue
+          expiration_period = THREE_HOURS_AGO.to_i
+        end
+        now = Time.parse(@clock.get_clock.get_utc_now.to_s)
+        (now - transaction_plugin_info.created_date) >= expiration_period
+      end
+
+      def cancel_pending_transaction(transaction_plugin_info)
+        @response_model.update_response_for_pending_payment transaction_plugin_info
       end
     end
   end

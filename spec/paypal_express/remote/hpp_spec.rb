@@ -91,7 +91,8 @@ shared_examples 'hpp_spec_common' do
       payment_infos[0].amount.should be_nil
       payment_infos[0].currency.should be_nil
       payment_infos[0].status.should == :PENDING
-      payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
+      payment_infos[0].gateway_error.should == {:payment_plugin_status => 'PENDING',
+                                                :token_expiration_period => @plugin.class.const_get(:THREE_HOURS_AGO).to_s}.to_json
       payment_infos[0].gateway_error_code.should be_nil
 
       properties = []
@@ -155,7 +156,8 @@ shared_examples 'hpp_spec_common' do
         payment_infos[0].amount.should be_nil
         payment_infos[0].currency.should be_nil
         payment_infos[0].status.should == :PENDING
-        payment_infos[0].gateway_error.should == '{"payment_plugin_status":"PENDING"}'
+        payment_infos[0].gateway_error.should == {:payment_plugin_status => 'PENDING',
+                                                  :token_expiration_period => @plugin.class.const_get(:THREE_HOURS_AGO).to_s}.to_json
         payment_infos[0].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[0].properties, :payment_processor_account_id).should == @payment_processor_account_id
       else
@@ -292,6 +294,80 @@ shared_examples 'hpp_spec_common' do
     form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
     token = validate_form_property(form, 'token')
     @plugin.send(:find_payment_processor_id_from_initial_call, @pm.kb_account_id, @call_context.tenant_id, token).should == @payment_processor_account_id
+  end
+
+  it 'should cancel the pending payment if the token expires' do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+    expiration_period = 5
+    payment_external_key = SecureRandom.uuid
+    properties = @plugin.hash_to_properties(
+        :transaction_external_key => payment_external_key,
+        :create_pending_payment => true,
+        :token_expiration_period => expiration_period
+    )
+
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+    kb_payment_id = validate_form_property(form, 'kb_payment_id')
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].amount.should be_nil
+    payment_infos[0].currency.should be_nil
+    payment_infos[0].status.should == :PENDING
+    payment_infos[0].gateway_error.should == {:payment_plugin_status => 'PENDING',
+                                              :token_expiration_period => expiration_period.to_s}.to_json
+    payment_infos[0].gateway_error_code.should be_nil
+
+    sleep payment_infos[0].created_date + expiration_period - Time.parse(@plugin.clock.get_clock.get_utc_now.to_s) + 1
+
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    # Make sure no extra response is created
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].amount.should be_nil
+    payment_infos[0].currency.should be_nil
+    payment_infos[0].status.should == :CANCELED
+    payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
+    payment_infos[0].gateway_error_code.should be_nil
+  end
+
+  it 'should cancel the pending payment if the token expires without passing property' do
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
+    ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
+
+    expiration_period = 5
+    @plugin.class.const_set(:THREE_HOURS_AGO, expiration_period)
+    payment_external_key = SecureRandom.uuid
+    properties = @plugin.hash_to_properties(
+        :transaction_external_key => payment_external_key,
+        :create_pending_payment => true
+    )
+
+    form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+    kb_payment_id = validate_form_property(form, 'kb_payment_id')
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].amount.should be_nil
+    payment_infos[0].currency.should be_nil
+    payment_infos[0].status.should == :PENDING
+    payment_infos[0].gateway_error.should == {:payment_plugin_status => 'PENDING',
+                                              :token_expiration_period => expiration_period.to_s}.to_json
+    payment_infos[0].gateway_error_code.should be_nil
+
+    sleep payment_infos[0].created_date + expiration_period - Time.parse(@plugin.clock.get_clock.get_utc_now.to_s) + 1
+
+    payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
+    # Make sure no extra response is created
+    payment_infos.size.should == 1
+    payment_infos[0].kb_payment_id.should == kb_payment_id
+    payment_infos[0].amount.should be_nil
+    payment_infos[0].currency.should be_nil
+    payment_infos[0].status.should == :CANCELED
+    payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
+    payment_infos[0].gateway_error_code.should be_nil
   end
 end
 
