@@ -97,12 +97,13 @@ module Killbill #:nodoc:
         # If its token has expired, cancel the payment and update the response row.
         if only_pending_transaction
           return t_info_plugins unless token_expired(t_info_plugins.last)
-          if cancel_pending_transaction(t_info_plugins.last).nil?
-            logger.warn("Try to cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id} but failed")
-            t_info_plugins
-          else
-            logger.info("Cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id}")
+          begin
+            cancel_pending_transaction(t_info_plugins.last).nil?
+            logger.info("Cancel pending kb_payment_id='#{t_info_plugins.last.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugins.last.kb_transaction_payment_id}'")
             super(kb_account_id, kb_payment_id, properties, context)
+          rescue => e
+            logger.warn("Unexpected exception while canceling pending kb_payment_id='#{t_info_plugins.last.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugins.last.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
+            t_info_plugins
           end
         else
           t_info_plugins_without_pending
