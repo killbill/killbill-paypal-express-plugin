@@ -447,7 +447,7 @@ module Killbill #:nodoc:
       end
 
       def cancel_pending_transaction(transaction_plugin_info)
-        @response_model.update_response_for_pending_payment transaction_plugin_info
+        @response_model.cancel_pending_payment transaction_plugin_info
       end
     end
   end

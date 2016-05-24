@@ -77,7 +77,7 @@ module Killbill #:nodoc:
         response.nil? ? nil : response.payment_processor_account_id
       end
 
-      def self.update_response_for_pending_payment(transaction_plugin_info)
+      def self.cancel_pending_payment(transaction_plugin_info)
          where( :api_call => 'build_form_descriptor',
                 :kb_payment_id => transaction_plugin_info.kb_payment_id,
                 :kb_payment_transaction_id => transaction_plugin_info.kb_transaction_payment_id).update_all( :success => false,
