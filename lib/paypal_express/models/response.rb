@@ -129,7 +129,6 @@ module Killbill #:nodoc:
         t_info_plugin.properties << create_plugin_property('paymentInfoSubject', payment_info_subject)
         t_info_plugin.properties << create_plugin_property('paypalExpressResponseId', id)
 
-
         t_info_plugin
       end
     end
