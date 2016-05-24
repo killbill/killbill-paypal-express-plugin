@@ -98,7 +98,7 @@ module Killbill #:nodoc:
         if only_pending_transaction
           return t_info_plugins unless token_expired(t_info_plugins.last)
           if cancel_pending_transaction(t_info_plugins.last).nil?
-            logger.warning("Try to cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id} but failed")
+            logger.warn("Try to cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id} but failed")
             t_info_plugins
           else
             logger.info("Cancel pending transaction #{t_info_plugins.last.kb_transaction_payment_id}")
