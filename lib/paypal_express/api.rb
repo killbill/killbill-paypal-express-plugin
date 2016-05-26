@@ -425,7 +425,8 @@ module Killbill #:nodoc:
           end
 
           properties = merge_properties(properties, options)
-          dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
+          transaction_plugin_info = dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc)
+          insert_payer_id transaction_plugin_info, options[:payer_id]
         end
       end
 
@@ -448,6 +449,17 @@ module Killbill #:nodoc:
 
       def cancel_pending_transaction(transaction_plugin_info)
         @response_model.cancel_pending_payment transaction_plugin_info
+      end
+
+      def insert_payer_id(t_info_plugin, payer_id)
+        begin
+          @response_model.insert_payer_id find_value_from_properties(t_info_plugin.properties, 'paypalExpressResponseId'), payer_id
+          t_info_plugin.properties = merge_properties(t_info_plugin.properties, {:payerId => payer_id})
+          t_info_plugin
+        rescue => e
+          logger.warn("Unexpected exception while insert payer_id='#{payer_id}' for kb_payment_id='#{t_info_plugin.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugin.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
+          t_info_plugin
+        end
       end
     end
   end
