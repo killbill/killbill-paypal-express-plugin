@@ -85,10 +85,6 @@ module Killbill #:nodoc:
                                                                                                              :message => { :payment_plugin_status => :CANCELED, :exception_message => 'Token expired. Payment Canceled by Janitor.' }.to_json)
       end
 
-      def self.insert_payer_id(response_id, payer_id)
-        where( :id => response_id).update_all( :payer_id => payer_id)
-      end
-
       def to_transaction_info_plugin(transaction=nil)
         t_info_plugin = super(transaction)
 
