@@ -50,6 +50,8 @@ module Killbill
         payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
         payment_response.amount.should == @amount
         payment_response.transaction_type.should == :PURCHASE
+        payer_id = find_value_from_properties(payment_response.properties, 'payerId')
+        payer_id.should_not be_nil
 
         # Verify GET API
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
@@ -61,6 +63,7 @@ module Killbill
         payment_infos[0].status.should == :PROCESSED
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
+        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
 
         # Try a full refund
         refund_response = @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, [], @call_context)
@@ -93,6 +96,8 @@ module Killbill
         payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
         payment_response.amount.should == @amount
         payment_response.transaction_type.should == :AUTHORIZE
+        payer_id = find_value_from_properties(payment_response.properties, 'payerId')
+        payer_id.should_not be_nil
 
         # Verify GET AUTHORIZED PAYMENT
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
@@ -104,6 +109,7 @@ module Killbill
         payment_infos[0].status.should == :PROCESSED
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
+        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
         find_value_from_properties(payment_infos[0].properties, 'paymentInfoPaymentStatus').should == 'Pending'
         find_value_from_properties(payment_infos[0].properties, 'paymentInfoPendingReason').should == 'authorization'
         find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id

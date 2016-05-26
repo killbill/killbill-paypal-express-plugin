@@ -18,6 +18,8 @@ shared_examples 'baid_spec_common' do
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == @amount
     payment_response.transaction_type.should == :PURCHASE
+    payer_id = find_value_from_properties(payment_response.properties, 'payerId')
+    payer_id.should_not be_nil
 
     # Verify GET API
     payment_infos = @plugin.get_payment_info(@pm.kb_account_id, @kb_payment.id, [], @call_context)
@@ -30,6 +32,7 @@ shared_examples 'baid_spec_common' do
     payment_infos[0].gateway_error.should == 'Success'
     payment_infos[0].gateway_error_code.should be_nil
     find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == @payment_processor_account_id
+    find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
 
     # Try a full refund
     refund_response = @plugin.refund_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[1].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
@@ -63,6 +66,8 @@ shared_examples 'baid_spec_common' do
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
     payment_response.amount.should == @amount
     payment_response.transaction_type.should == :AUTHORIZE
+    payer_id = find_value_from_properties(payment_response.properties, 'payerId')
+    payer_id.should_not be_nil
 
     # Verify GET API
     payment_infos = @plugin.get_payment_info(@pm.kb_account_id, @kb_payment.id, [], @call_context)
@@ -75,6 +80,7 @@ shared_examples 'baid_spec_common' do
     payment_infos[0].gateway_error.should == 'Success'
     payment_infos[0].gateway_error_code.should be_nil
     find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == @payment_processor_account_id
+    find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
 
     # Try multiple partial captures
     partial_capture_amount = BigDecimal.new('10')
