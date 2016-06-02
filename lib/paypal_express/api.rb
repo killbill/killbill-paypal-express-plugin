@@ -317,6 +317,7 @@ module Killbill #:nodoc:
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
         options[:payment_processor_account_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
+        options[:no_shipping] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :no_shipping)
 
         max_amount_value = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
         if max_amount_value
