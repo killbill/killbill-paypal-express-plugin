@@ -503,7 +503,7 @@ module Killbill #:nodoc:
           end
         end
 
-        # Parse JSON based options including funding_source, items, and shipping_options
+        # Parse JSON based options including funding_source, items, shipping_options, address and shipping_address
         [:funding_sources, :shipping_options, :items, :shipping_address, :address].each do |sym|
           begin
             options[sym] = JSON.parse options[sym] unless options[sym].nil?
@@ -513,7 +513,7 @@ module Killbill #:nodoc:
           end
         end
 
-        # Filter the options that has second level options including funding_source, items, and shipping_options
+        # Filter the options that has second level options including funding_source, items, shipping_options, address and shipping_address
         [:shipping_address, :address].each do |key|
           options[key] = filter_hash_options options[key], [:name, :address1, :address2, :city, :state, :country, :phone, :zip] unless options[key].nil?
         end
