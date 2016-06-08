@@ -317,13 +317,8 @@ module Killbill #:nodoc:
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
         options[:payment_processor_account_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
-        options[:no_shipping] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :no_shipping)
 
-        max_amount_value = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :max_amount)
-        if max_amount_value
-          max_amount_in_cents = to_cents((max_amount_value || '0').to_f, currency)
-          options[:max_amount] = max_amount_in_cents
-        end
+        add_optional_parameters(options, properties_hash, currency)
 
         amount_in_cents = amount.nil? ? nil : to_cents(amount, currency)
         response = @private_api.initiate_express_checkout(kb_account_id,
@@ -449,6 +444,102 @@ module Killbill #:nodoc:
 
       def cancel_pending_transaction(transaction_plugin_info)
         @response_model.cancel_pending_payment transaction_plugin_info
+      end
+
+      def add_optional_parameters(options, properties_hash, currency)
+        [:max_amount,
+         :req_billing_address,
+         :no_shipping,
+         :address_override,
+         :locale,
+         :brand_name,
+         :page_style,
+         :logo_image,
+         :header_image,
+         :header_border_color,
+         :header_background_color,
+         :background_color,
+         :allow_guest_checkout,
+         :landing_page,
+         :email,
+         :allow_note,
+         :callback_url,
+         :callback_timeout,
+         :allow_buyer_optin,
+         :callback_version,
+         :address,
+         :shipping_address,
+         :total_type,
+         :funding_sources,
+         :shipping_options,
+         # Below are options for payment details
+         :subtotal,
+         :shipping,
+         :handling,
+         :tax,
+         :insurance_total,
+         :shipping_discount,
+         :insurance_option_offered,
+         :description,
+         :custom,
+         :order_id,
+         :invoice_id,
+         :notify_url,
+         :items].each do |sym|
+           option_val = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, sym)
+           options[sym] = option_val unless option_val.nil?
+        end
+
+        # Special consideration for amount related options
+        [:max_amount,
+         :subtotal,
+         :shipping,
+         :handling,
+         :tax,
+         :insurance_total,
+         :shipping_discount].each do |sym|
+          if options[sym]
+            options[sym] = to_cents((options[sym] || '0').to_f, currency)
+          end
+        end
+
+        # Parse JSON based options including funding_source, items, and shipping_options
+        [:funding_sources, :shipping_options, :items].each do |sym|
+          begin
+            options[sym] = JSON.parse options[sym] unless options[sym].nil?
+          rescue => e
+            logger.warn("Unexpected exception while parsing JSON option #{sym}: #{e.message}\n#{e.backtrace.join("\n")}")
+            options[sym] = nil
+          end
+        end
+
+        # Filter the options that has second level options including funding_source, items, and shipping_options
+        options[:funding_sources] = filter_hash_options options[:funding_sources], [:source] unless options[:funding_sources].nil?
+        options[:shipping_options] = filter_array_options options[:shipping_options], [:default, :amount, :name], [:amount], currency unless options[:shipping_options].nil?
+        options[:items] = filter_array_options options[:items], [:name, :number, :quantity, :amount, :description, :url, :category], [:amount], currency  unless options[:items].nil?
+      end
+
+      def filter_array_options(option, allowed_keys, amount_keys = [], currency = nil)
+        return nil if option.nil? || !option.is_a?(Array)
+        sub_options = []
+        option.each do |item|
+          next unless item.is_a?(Hash)
+          sub_hash = filter_hash_options item, allowed_keys, amount_keys, currency
+          sub_options << sub_hash unless sub_hash.nil?
+        end
+        sub_options.empty? ? nil : sub_options
+      end
+
+      def filter_hash_options(option, allowed_keys, amount_keys = [], currency = nil)
+        return nil if option.nil? || !option.is_a?(Hash)
+        # Because option is parsed from JSON, we need to convert to symbol keys to be used in ::Killbill::Plugin::ActiveMerchant::Utils.normalized
+        option.symbolize_keys!
+        sub_hash = {}
+        allowed_keys.each do |key|
+          sub_hash[key] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(option, key)
+          sub_hash[key] = to_cents((sub_hash[key] || '0').to_f, currency) if amount_keys.include?(key) && !sub_hash[key].nil?
+        end
+        sub_hash.empty? ? nil : sub_hash
       end
     end
   end
