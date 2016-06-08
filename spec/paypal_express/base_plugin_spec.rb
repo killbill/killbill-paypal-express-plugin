@@ -75,6 +75,8 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                       :shipping_discount => amount,
                       :shipping_options => [{:default => false, :name => 'jack', :amount => amount, :unlimited => true}].to_json,
                       :items => [{:name => 'john', :number => 111, :quantity => 12, :amount => amount, :description => 'jacket', :url => 'test', :category => 'unknown', :unlimited => true}].to_json,
+                      :shipping_address => {:name => 'john', :address1 => '111', :address2 => '12', :city => 'palo alto', :state => 'ca', :country => 'jacket', :phone => 'test', :zip => 'unknown', :family => 'unknown'}.to_json,
+                      :address => {:name => 'john', :address1 => '111', :address2 => '12', :city => 'palo alto', :state => 'ca', :country => 'jacket', :phone => 'test', :zip => 'unknown', :family => 'unknown'}.to_json,
                       :funding_sources => {:source => 'unknown'}.to_json
                    }
     @plugin.send(:add_optional_parameters, options, property_hash, 'USD')
@@ -90,6 +92,8 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                          :shipping_discount => amount_in_cents,
                          :shipping_options => [{:default => false, :name => 'jack', :amount => amount_in_cents}],
                          :items => [{:name => 'john', :number => 111, :quantity => 12, :amount => amount_in_cents, :description => 'jacket', :url => 'test', :category => 'unknown'}],
+                         :shipping_address => {:name => 'john', :address1 => '111', :address2 => '12', :state => 'ca', :city => 'palo alto', :country => 'jacket', :phone => 'test', :zip => 'unknown'},
+                         :address => {:name => 'john', :address1 => '111', :address2 => '12', :state => 'ca', :city => 'palo alto', :country => 'jacket', :phone => 'test', :zip => 'unknown'},
                          :funding_sources => {:source => 'unknown'}
                       }
     options.should == expected_options
@@ -106,7 +110,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                       :insurance_total => amount,
                       :shipping_discount => amount,
                       :shipping_options => "{\"default\":\"false\", [name]:\"jack\", \"amount\":12}",
-                      :items => {:name => 'john', :number => 111, :quantity => 12, :amount => amount, :description => 'jacket', :url => 'test', :category => 'unknown', :unlimited => true}.to_json
+                      :items => {:name => 'john', :number => 111, :quantity => 12, :amount => amount, :description => 'jacket', :url => 'test', :category => 'unknown', :unlimited => true}.to_json,
+                      :shipping_address => [{:name => 'john', :address1 => '111', :address2 => '12', :city => 'amount', :country => 'jacket', :phone => 'test', :zip => 'unknown'}].to_json,
+                      :address => [{:name => 'john', :address1 => '111', :address2 => '12', :city => 'amount', :country => 'jacket', :phone => 'test', :zip => 'unknown'}].to_json
                     }
     @plugin.send(:add_optional_parameters, options, property_hash, 'USD')
     expected_options = { :no_shipping => true,
@@ -118,7 +124,9 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                          :insurance_total => amount_in_cents,
                          :shipping_discount => amount_in_cents,
                          :items => nil,
-                         :shipping_options => nil
+                         :shipping_options => nil,
+                         :shipping_address => nil,
+                         :address => nil
                        }
     options.should == expected_options
   end
