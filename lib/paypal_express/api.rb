@@ -318,7 +318,7 @@ module Killbill #:nodoc:
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
         options[:payment_processor_account_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
 
-        add_optional_parameters(options, properties_hash, currency)
+        add_optional_parameters options, properties_hash, currency
 
         amount_in_cents = amount.nil? ? nil : to_cents(amount, currency)
         response = @private_api.initiate_express_checkout(kb_account_id,
@@ -516,7 +516,7 @@ module Killbill #:nodoc:
         # Filter the options that has second level options including funding_source, items, and shipping_options
         options[:funding_sources] = filter_hash_options options[:funding_sources], [:source] unless options[:funding_sources].nil?
         options[:shipping_options] = filter_array_options options[:shipping_options], [:default, :amount, :name], [:amount], currency unless options[:shipping_options].nil?
-        options[:items] = filter_array_options options[:items], [:name, :number, :quantity, :amount, :description, :url, :category], [:amount], currency  unless options[:items].nil?
+        options[:items] = filter_array_options options[:items], [:name, :number, :quantity, :amount, :description, :url, :category], [:amount], currency unless options[:items].nil?
       end
 
       def filter_array_options(option, allowed_keys, amount_keys = [], currency = nil)

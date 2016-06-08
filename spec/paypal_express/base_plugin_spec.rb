@@ -94,7 +94,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                       }
     options.should == expected_options
 
-    # Test with incorrect option format
+    # Test with incorrect option format and invalid json format
     options = {}
     property_hash = { :no_shipping => true,
                       :max_amount => amount,
@@ -105,7 +105,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                       :fakeKey => 'unlimited',
                       :insurance_total => amount,
                       :shipping_discount => amount,
-                      :shipping_options => {:default => false, :name => 'jack', :amount => amount, :unlimited => true}.to_json,
+                      :shipping_options => "{\"default\":\"false\", [name]:\"jack\", \"amount\":12}",
                       :items => {:name => 'john', :number => 111, :quantity => 12, :amount => amount, :description => 'jacket', :url => 'test', :category => 'unknown', :unlimited => true}.to_json
                     }
     @plugin.send(:add_optional_parameters, options, property_hash, 'USD')
