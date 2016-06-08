@@ -225,7 +225,7 @@ Below is a list of optional parameters for build_form_descriptor call. More deta
 | max_amount                   | Maximum amount parameter                                          |
 | auth_mode                    | If true, [Authorization Payment Action](https://developer.paypal.com/docs/classic/express-checkout/integration-guide/ECRelatedAPIOps/) is adopted. Otherwise, Sale Payment Action is used.|
 | no_shipping                  | Whether or not to show shipping address on PayPal checkout page   |
-|req_billing_address           | Is 1 or 0. The value 1 indicates that you require that the buyer’s billing address on file with PayPal be returned. Setting this element will return `BILLTONAME`, `STREET`, `STREET2`, `CITY`, `STATE`, `ZIP`, and `COUNTRYCODE`. |
+| req_billing_address           | Is 1 or 0. The value 1 indicates that you require that the buyer’s billing address on file with PayPal be returned. Setting this element will return `BILLTONAME`, `STREET`, `STREET2`, `CITY`, `STATE`, `ZIP`, and `COUNTRYCODE`. |
 | address_override             | Determines whether or not the PayPal pages should display the shipping address set by you in this SetExpressCheckout request, not the shipping address on file with PayPal for this buyer.|
 | locale                       | Locale of pages displayed by PayPal during Express Checkout. It is either a two-letter country code or five-character locale code supported by PayPal. |
 | brand_name                   | A label that overrides the business name in the PayPal account on the PayPal hosted checkout pages.|
@@ -242,8 +242,8 @@ Below is a list of optional parameters for build_form_descriptor call. More deta
 | callback_url                 | URL to which the callback request from PayPal is sent. It must start with HTTPS for production integration. |
 | callback_timeout             | An override for you to request more or less time to be able to process the callback request and respond. |
 | allow_buyer_optin            | Enables the buyer to provide their email address on the PayPal pages to be notified of promotions or special events. |
-| shipping_address             | Address to which the order is shipped.                             |
-| address                      | Address to which the order is shipped if shipping_address is not set. |
+| shipping_address             | Address to which the order is shipped. This parameter must be a JSON Hash with keys of `name`, `address1`, `address2`, `state`, `city`, `country`, `phone`, `zip` and `phone`. |
+| address                      | Address to which the order is shipped if shipping_address is not set. This parameter must be a JSON Hash with keys of `name`, `address1`, `address2`, `state`, `city`, `country`, `phone`, `zip` and `phone`. |
 | total_type                   | Type declaration for the label to be displayed in MiniCart for UX. It is one of the following values: Total or EstimatedTotal. |
 | funding_sources              | This parameter must be in a JSON hash format with a key being `source`. This element could be used to specify the preferred funding option for a guest user. However, the `landing_page` element must also be set to `Billing`. Otherwise, it is ignored.|
 | shipping_options             | This parameter must be in a JSON hash format with keys of `default`, `amount`, and `name`. This corresponds to the `ShippingOptionsType` in the SetupExpressCheckout call. |
