@@ -217,5 +217,46 @@ Plugin properties
 | zip                          | Billing address zip code                                          |
 | state                        | Billing address state                                             |
 | country                      | Billing address country                                           |
-| max_amount                   | Maximum amount parameter (optional) for SetExpressCheckout call   |
+
+Below is a list of optional parameters for build_form_descriptor call. More details can be found on PayPal [manual](https://developer.paypal.com/docs/classic/api/merchant/SetExpressCheckout_API_Operation_SOAP/)
+
+| Key                          | Description                                                       |
+| ---------------------------: | ----------------------------------------------------------------- |
+| max_amount                   | Maximum amount parameter                                          |
 | auth_mode                    | If true, [Authorization Payment Action](https://developer.paypal.com/docs/classic/express-checkout/integration-guide/ECRelatedAPIOps/) is adopted. Otherwise, Sale Payment Action is used.|
+| no_shipping                  | Whether or not to show shipping address on PayPal checkout page   |
+| req_billing_address           | Is 1 or 0. The value 1 indicates that you require that the buyer’s billing address on file with PayPal be returned. Setting this element will return `BILLTONAME`, `STREET`, `STREET2`, `CITY`, `STATE`, `ZIP`, and `COUNTRYCODE`. |
+| address_override             | Determines whether or not the PayPal pages should display the shipping address set by you in this SetExpressCheckout request, not the shipping address on file with PayPal for this buyer.|
+| locale                       | Locale of pages displayed by PayPal during Express Checkout. It is either a two-letter country code or five-character locale code supported by PayPal. |
+| brand_name                   | A label that overrides the business name in the PayPal account on the PayPal hosted checkout pages.|
+| page_style                   | Name of the Custom Payment Page Style for payment pages associated with this button or link. It corresponds to the HTML variable page_style for customizing payment pages. |
+| logo_image                   | A URL to your logo image. Use a valid graphics format, such as .gif, .jpg, or .png. Limit the image to 190 pixels wide by 60 pixels high. |
+| header_image                 | URL for the image you want to appear at the top left of the payment page. The image has a maximum size of 750 pixels wide by 90 pixels high. |
+| header_border_color          | Sets the border color around the header of the payment page. The border is a 2-pixel perimeter around the header space, which is 750 pixels wide by 90 pixels high. By default, the color is black. |
+| header_background_color      | Sets the background color for the header of the payment page. By default, the color is white. |
+| background_color             | Sets the background color for the payment page. By default, the color is white.|
+| allow_guest_checkout         | If set to true, then the SolutionType is Sole and buyer does not need to create a PayPal account to check out. |
+| landing_page                 | Type of PayPal page to display. It is one of the following values: Billing for Non-PayPal account and Login — PayPal account login. |
+| email                        | Email address of the buyer as entered during checkout. PayPal uses this value to pre-fill the PayPal membership sign-up portion on the PayPal pages. |
+| allow_note                   | Enables the buyer to enter a note to the merchant on the PayPal page during checkout.|
+| callback_url                 | URL to which the callback request from PayPal is sent. It must start with HTTPS for production integration. |
+| callback_timeout             | An override for you to request more or less time to be able to process the callback request and respond. |
+| allow_buyer_optin            | Enables the buyer to provide their email address on the PayPal pages to be notified of promotions or special events. |
+| shipping_address             | Address to which the order is shipped. This parameter must be a JSON Hash with keys of `name`, `address1`, `address2`, `state`, `city`, `country`, `phone`, `zip` and `phone`. |
+| address                      | Address to which the order is shipped if shipping_address is not set. This parameter must be a JSON Hash with keys of `name`, `address1`, `address2`, `state`, `city`, `country`, `phone`, `zip` and `phone`. |
+| total_type                   | Type declaration for the label to be displayed in MiniCart for UX. It is one of the following values: Total or EstimatedTotal. |
+| funding_sources              | This parameter must be in a JSON hash format with a key being `source`. This element could be used to specify the preferred funding option for a guest user. However, the `landing_page` element must also be set to `Billing`. Otherwise, it is ignored.|
+| shipping_options             | This parameter must be in a JSON hash format with keys of `default`, `amount`, and `name`. This corresponds to the `ShippingOptionsType` in the SetupExpressCheckout call. |
+| subtotal                     | Sum of cost of all items in this order. For digital goods, this field is required. |
+| shipping                     | Total shipping costs for this order.                               |
+| handling                     | Total handling costs for this order.                               |
+| tax                          | Sum of tax for all items in this order.                            |
+| insurance_total              | Total shipping insurance costs for this order. The value must be a non-negative currency amount or null if you offer insurance options. |
+| shipping_discount            | Shipping discount for this order, specified as a negative number.  |
+| insurance_option_offered     | Indicates whether insurance is available as an option the buyer can choose on the PayPal Review page. |
+| description                  | Description of items the buyer is purchasing.                      |
+| custom                       | A free-form field for your own use.                                |
+| order_id                     | Your own invoice or tracking number.                               |
+| invoice_id                   | Your own invoice or tracking number. This will be overridden by order_id. |
+| notify_url                   | Your URL for receiving Instant Payment Notification (IPN) about this transaction. If you do not specify this value in the request, the notification URL from your Merchant Profile is used, if one exists.|
+| items                        | This parameter must be a JSON Array that contains a list of Hashes with keys of `name`, `number`, `quantity`, `amount`, `description`, `url` and `category`. |
