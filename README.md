@@ -13,6 +13,7 @@ Kill Bill compatibility
 | 2.x.y          | 0.14.z            |
 | 3.x.y          | 0.15.z            |
 | 4.x.y          | 0.16.z            |
+| 5.x.y          | 0.17.z            |
 
 Requirements
 ------------
