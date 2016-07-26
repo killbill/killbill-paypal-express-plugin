@@ -52,6 +52,7 @@ ActiveRecord::Schema.define(:version => 20151008153635) do
   end
 
   add_index(:paypal_express_transactions, :kb_payment_id)
+  add_index(:paypal_express_transactions, :paypal_express_response_id, :name => 'idx_paypal_express_transactions_on_paypal_express_response_id')
 
   create_table "paypal_express_responses", :force => true do |t|
     t.string   "api_call",          :null => false
@@ -114,4 +115,6 @@ ActiveRecord::Schema.define(:version => 20151008153635) do
     t.string   "kb_account_id"
     t.string   "kb_tenant_id"
   end
+
+  add_index(:paypal_express_responses, [:kb_payment_id, :kb_tenant_id], :name => 'idx_paypal_express_responses_on_kb_payment_id_kb_tenant_id')
 end

@@ -48,7 +48,8 @@ CREATE TABLE `paypal_express_transactions` (
   `kb_account_id` varchar(255) NOT NULL,
   `kb_tenant_id` varchar(255) NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `index_paypal_express_transactions_on_kb_payment_id` (`kb_payment_id`)
+  KEY `index_paypal_express_transactions_on_kb_payment_id` (`kb_payment_id`),
+  KEY `idx_paypal_express_transactions_on_paypal_express_response_id` (`paypal_express_response_id`)
 ) ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_bin;
 
 CREATE TABLE `paypal_express_responses` (
@@ -112,5 +113,6 @@ CREATE TABLE `paypal_express_responses` (
   `updated_at` datetime NOT NULL,
   `kb_account_id` varchar(255) DEFAULT NULL,
   `kb_tenant_id` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `index_paypal_express_responses_on_kb_payment_id_kb_tenant_id` (`kb_payment_id`, `kb_tenant_id`)
 ) ENGINE=InnoDB CHARACTER SET utf8 COLLATE utf8_bin;
