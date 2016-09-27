@@ -1,5 +1,8 @@
 module ActiveMerchant #:nodoc:
   module Billing #:nodoc:
+
+    KB_PLUGIN_VERSION = Gem.loaded_specs['killbill-paypal-express'].version.version rescue nil
+
     module PaypalCommonAPI
 
       DUPLICATE_REQUEST_CODE = '11607'
@@ -33,6 +36,41 @@ module ActiveMerchant #:nodoc:
         xml.target!
       end
 
+      def commit(action, request)
+        response = parse(action, ssl_post(endpoint_url, build_request(request), build_headers))
+
+        build_response(successful?(response), message_from(response), response,
+                       :test => test?,
+                       :authorization => authorization_from(response),
+                       :fraud_review => fraud_review?(response),
+                       :avs_result => {:code => response[:avs_code]},
+                       :cvv_result => response[:cvv2_code])
+      end
+
+      def build_headers
+        x_r_id = x_request_id
+
+        headers = (@options[:headers] || {}).dup
+        headers['Content-Type'] ||= 'text/xml'
+        headers['User-Agent'] ||= user_agent
+        headers['X-Request-Id'] ||= x_r_id unless x_r_id.blank?
+        headers
+      end
+
+      def user_agent
+        @@ua ||= JSON.dump({
+                               :bindings_version => KB_PLUGIN_VERSION,
+                               :lang => 'ruby',
+                               :lang_version => "#{RUBY_VERSION} p#{RUBY_PATCHLEVEL} (#{RUBY_RELEASE_DATE})",
+                               :platform => RUBY_PLATFORM,
+                               :publisher => 'killbill'
+                           })
+      end
+
+      def x_request_id
+        # See KillbillMDCInsertingServletFilter
+        org::slf4j::MDC::get('req.requestId') rescue nil
+      end
     end
   end
 end
