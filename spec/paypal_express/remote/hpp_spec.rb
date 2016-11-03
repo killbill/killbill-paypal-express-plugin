@@ -328,7 +328,7 @@ shared_examples 'hpp_spec_common' do
     payment_infos[0].kb_payment_id.should == kb_payment_id
     payment_infos[0].amount.should be_nil
     payment_infos[0].currency.should be_nil
-    payment_infos[0].status.should == :CANCELED
+    payment_infos[0].status.should == :ERROR
     payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
     payment_infos[0].gateway_error_code.should be_nil
   end
@@ -365,7 +365,7 @@ shared_examples 'hpp_spec_common' do
     payment_infos[0].kb_payment_id.should == kb_payment_id
     payment_infos[0].amount.should be_nil
     payment_infos[0].currency.should be_nil
-    payment_infos[0].status.should == :CANCELED
+    payment_infos[0].status.should == :ERROR
     payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
     payment_infos[0].gateway_error_code.should be_nil
   end
