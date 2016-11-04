@@ -331,6 +331,7 @@ shared_examples 'hpp_spec_common' do
     payment_infos[0].status.should == :ERROR
     payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
     payment_infos[0].gateway_error_code.should be_nil
+    @plugin.kb_apis.proxied_services[:payment_api].get_payment(kb_payment_id).transactions.first.transaction_status == 'PAYMENT_FAILURE'
   end
 
   it 'should cancel the pending payment if the token expires without passing property' do
@@ -368,6 +369,7 @@ shared_examples 'hpp_spec_common' do
     payment_infos[0].status.should == :ERROR
     payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
     payment_infos[0].gateway_error_code.should be_nil
+    @plugin.kb_apis.proxied_services[:payment_api].get_payment(kb_payment_id).transactions.first.transaction_status == 'PAYMENT_FAILURE'
   end
 end
 
