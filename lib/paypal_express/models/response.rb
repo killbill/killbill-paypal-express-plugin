@@ -54,7 +54,8 @@ module Killbill #:nodoc:
                   :payment_info_shiphandleamount          => (extract(response, 'PaymentInfo', 'ShipHandleAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipHandleAmount')),
                   :payment_info_shipdiscount              => (extract(response, 'PaymentInfo', 'ShipDiscount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipDiscount')),
                   :payment_info_insuranceamount           => (extract(response, 'PaymentInfo', 'InsuranceAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'InsuranceAmount')),
-                  :payment_info_subject                   => (extract(response, 'PaymentInfo', 'Subject') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'Subject'))
+                  :payment_info_subject                   => (extract(response, 'PaymentInfo', 'Subject') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'Subject')),
+                  :error_code                             => (extract(response, 'Errors', 'ErrorCode'))
               }.merge!(extra_params),
               model)
       end
