@@ -47,15 +47,14 @@ module Killbill #:nodoc:
                   :payment_info_exchangerate              => (extract(response, 'PaymentInfo', 'ExchangeRate') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ExchangeRate')),
                   :payment_info_paymentstatus             => (extract(response, 'PaymentInfo', 'PaymentStatus') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'PaymentStatus')),
                   :payment_info_pendingreason             => (extract(response, 'PaymentInfo', 'PendingReason') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'PendingReason')),
-                  :payment_info_reasoncode                => (extract(response, 'PaymentInfo', 'ReasonCode') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ReasonCode')),
+                  :payment_info_reasoncode                => (extract(response, 'PaymentInfo', 'ReasonCode') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ReasonCode') || extract(response, 'Errors', 'ErrorCode')),
                   :payment_info_protectioneligibility     => (extract(response, 'PaymentInfo', 'ProtectionEligibility') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ProtectionEligibility')),
                   :payment_info_protectioneligibilitytype => (extract(response, 'PaymentInfo', 'ProtectionEligibilityType') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ProtectionEligibilityType')),
                   :payment_info_shipamount                => (extract(response, 'PaymentInfo', 'ShipAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipAmount')),
                   :payment_info_shiphandleamount          => (extract(response, 'PaymentInfo', 'ShipHandleAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipHandleAmount')),
                   :payment_info_shipdiscount              => (extract(response, 'PaymentInfo', 'ShipDiscount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipDiscount')),
                   :payment_info_insuranceamount           => (extract(response, 'PaymentInfo', 'InsuranceAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'InsuranceAmount')),
-                  :payment_info_subject                   => (extract(response, 'PaymentInfo', 'Subject') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'Subject')),
-                  :error_code                             => (extract(response, 'Errors', 'ErrorCode'))
+                  :payment_info_subject                   => (extract(response, 'PaymentInfo', 'Subject') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'Subject'))
               }.merge!(extra_params),
               model)
       end
@@ -84,6 +83,10 @@ module Killbill #:nodoc:
                 :kb_payment_transaction_id => transaction_plugin_info.kb_transaction_payment_id).update_all( :success => false,
                                                                                                              :updated_at => Time.now.utc,
                                                                                                              :message => { :payment_plugin_status => :CANCELED, :exception_message => 'Token expired. Payment Canceled by Janitor.' }.to_json)
+      end
+
+      def gateway_error_code
+        payment_info_reasoncode
       end
 
       def to_transaction_info_plugin(transaction=nil)

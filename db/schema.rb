@@ -114,7 +114,6 @@ ActiveRecord::Schema.define(:version => 20151008153635) do
     t.datetime "updated_at",        :null => false
     t.string   "kb_account_id"
     t.string   "kb_tenant_id"
-    t.integer  "error_code"
   end
 
   add_index(:paypal_express_responses, [:kb_payment_id, :kb_tenant_id], :name => 'idx_paypal_express_responses_on_kb_payment_id_kb_tenant_id')
