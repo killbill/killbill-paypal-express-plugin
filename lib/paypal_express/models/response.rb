@@ -6,6 +6,10 @@ module Killbill #:nodoc:
 
       has_one :paypal_express_transaction
 
+      def self.ignore_none(value)
+        value == 'none' ? nil : value
+      end
+
       def self.from_response(api_call, kb_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type, payment_processor_account_id, kb_tenant_id, response, extra_params = {}, model = ::Killbill::PaypalExpress::PaypalExpressResponse)
         super(api_call,
               kb_account_id,
@@ -47,7 +51,7 @@ module Killbill #:nodoc:
                   :payment_info_exchangerate              => (extract(response, 'PaymentInfo', 'ExchangeRate') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ExchangeRate')),
                   :payment_info_paymentstatus             => (extract(response, 'PaymentInfo', 'PaymentStatus') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'PaymentStatus')),
                   :payment_info_pendingreason             => (extract(response, 'PaymentInfo', 'PendingReason') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'PendingReason')),
-                  :payment_info_reasoncode                => (extract(response, 'PaymentInfo', 'ReasonCode') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ReasonCode') || extract(response, 'Errors', 'ErrorCode')),
+                  :payment_info_reasoncode                => (ignore_none(extract(response, 'PaymentInfo', 'ReasonCode')) || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ReasonCode') || extract(response, 'Errors', 'ErrorCode')),
                   :payment_info_protectioneligibility     => (extract(response, 'PaymentInfo', 'ProtectionEligibility') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ProtectionEligibility')),
                   :payment_info_protectioneligibilitytype => (extract(response, 'PaymentInfo', 'ProtectionEligibilityType') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ProtectionEligibilityType')),
                   :payment_info_shipamount                => (extract(response, 'PaymentInfo', 'ShipAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipAmount')),
