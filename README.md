@@ -5,6 +5,8 @@ Plugin to use [PayPal Express Checkout](https://www.paypal.com/webapps/mpp/expre
 
 Release builds are available on [Maven Central](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.kill-bill.billing.plugin.ruby%22%20AND%20a%3A%22paypal-express-plugin%22) with coordinates `org.kill-bill.billing.plugin.ruby:paypal-express-plugin`.
 
+A full end-to-end integration demo is available [here](https://github.com/killbill/killbill-paypal-demo).
+
 Kill Bill compatibility
 -----------------------
 
