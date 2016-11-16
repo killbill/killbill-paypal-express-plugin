@@ -13,6 +13,8 @@
 - org.kill-bill.commons:killbill-clock:jar:0.20
 - org.kill-bill.billing:killbill-util:jar:0.18.0
 - com.fasterxml.jackson.dataformat:jackson-dataformat-csv:jar:2.4.5
+- org.bouncycastle:bcprov-jdk15on:jar:1.55
+- org.bouncycastle:bcpkix-jdk15on:jar:1.55
 - org.kill-bill.billing.plugin:killbill-plugin-api-entitlement:jar:0.23
 - org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4:jar:1.16
 - com.h2database:h2:jar:1.4.186
@@ -33,11 +35,9 @@
 - io.dropwizard.metrics:metrics-ehcache:jar:3.1.1
 - org.jdbi:jdbi:jar:2.62
 - com.fasterxml.jackson.core:jackson-core:jar:2.4.5
-- org.bouncycastle:bcpkix-jdk15on:jar:1.54
 - org.apache.felix:org.apache.felix.framework:jar:4.4.1
 - org.joda:joda-money:jar:0.9
 - org.kill-bill.billing.plugin:killbill-plugin-api-payment:jar:0.23
-- org.bouncycastle:bcprov-jdk15on:jar:1.54
 - org.apache.shiro:shiro-core:jar:1.2.3
 - org.kill-bill.billing:killbill-internal-api:jar:0.18.0
 - org.kill-bill.billing:killbill-util:jar:tests:0.18.0
