@@ -53,7 +53,7 @@ shared_examples 'hpp_spec_common' do
     end
 
     # Each loop triggers one successful purchase and one successful refund
-    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 5 * n
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 8 * n
   end
 
@@ -116,7 +116,7 @@ shared_examples 'hpp_spec_common' do
     end
 
     # Each loop triggers one successful purchase and one successful refund
-    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 5 * n
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 9 * n
   end
 
@@ -184,7 +184,7 @@ shared_examples 'hpp_spec_common' do
     end
 
     # Each loop triggers one successful auth, one successful capture and one successful refund
-    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 3 * n
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 5 * n
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 1 + 15 * n / 2 + 7 * n % 2
   end
 
@@ -224,8 +224,8 @@ shared_examples 'hpp_spec_common' do
       @plugin.kb_apis.proxied_services[:payment_api].payments.size.should == i / 2
     end
 
-    # Each loop triggers one successful authorize and one successful void
-    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 2 * n
+    # Each loop triggers one successful details_for, authorize and void
+    ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 3 * n
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 9 * n / 2 + 5 * n % 2
   end
 
