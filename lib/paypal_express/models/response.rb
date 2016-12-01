@@ -51,7 +51,7 @@ module Killbill #:nodoc:
                   :payment_info_exchangerate              => (extract(response, 'PaymentInfo', 'ExchangeRate') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ExchangeRate')),
                   :payment_info_paymentstatus             => (extract(response, 'PaymentInfo', 'PaymentStatus') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'PaymentStatus')),
                   :payment_info_pendingreason             => (extract(response, 'PaymentInfo', 'PendingReason') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'PendingReason')),
-                  :payment_info_reasoncode                => (ignore_none(extract(response, 'PaymentInfo', 'ReasonCode')) || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ReasonCode') || extract(response, 'Errors', 'ErrorCode')),
+                  :payment_info_reasoncode                => (ignore_none(extract(response, 'PaymentInfo', 'ReasonCode')) || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ReasonCode') || extract(response, 'error_codes')),
                   :payment_info_protectioneligibility     => (extract(response, 'PaymentInfo', 'ProtectionEligibility') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ProtectionEligibility')),
                   :payment_info_protectioneligibilitytype => (extract(response, 'PaymentInfo', 'ProtectionEligibilityType') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ProtectionEligibilityType')),
                   :payment_info_shipamount                => (extract(response, 'PaymentInfo', 'ShipAmount') || extract(response, 'PaymentTransactionDetails', 'PaymentInfo', 'ShipAmount')),
