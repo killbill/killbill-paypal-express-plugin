@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cc="urn:ebay:apis:CoreComponentTypes" xmlns:ds="http://www.w3.org/2000/09/xmldsig#" xmlns:ebl="urn:ebay:apis:eBLBaseComponents" xmlns:ed="urn:ebay:apis:EnhancedDataTypes" xmlns:ns="urn:ebay:api:PayPalAPI" xmlns:saml="urn:oasis:names:tc:SAML:1.0:assertion" xmlns:wsse="http://schemas.xmlsoap.org/ws/2002/12/secext" xmlns:wsu="http://schemas.xmlsoap.org/ws/2002/07/utility" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <SOAP-ENV:Header>
+    <Security xmlns="http://schemas.xmlsoap.org/ws/2002/12/secext" xsi:type="wsse:SecurityType"/>
+    <RequesterCredentials xmlns="urn:ebay:api:PayPalAPI" xsi:type="ebl:CustomSecurityHeaderType">
+      <Credentials xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:UserIdPasswordType">
+        <Username xsi:type="xs:string"/>
+        <Password xsi:type="xs:string"/>
+        <Signature xsi:type="xs:string"/>
+        <Subject xsi:type="xs:string"/>
+      </Credentials>
+    </RequesterCredentials>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body id="_0">
+    <DoExpressCheckoutPaymentResponse xmlns="urn:ebay:api:PayPalAPI">
+      <Timestamp xmlns="urn:ebay:apis:eBLBaseComponents">2016-11-23T01:50:51Z</Timestamp>
+      <Ack xmlns="urn:ebay:apis:eBLBaseComponents">SuccessWithWarning</Ack>
+      <CorrelationID xmlns="urn:ebay:apis:eBLBaseComponents">cfce8071e839</CorrelationID>
+      <Errors xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:ErrorType">
+        <ShortMessage xsi:type="xs:string">Duplicate Request</ShortMessage>
+        <LongMessage xsi:type="xs:string">A successful transaction has already been completed for this token.</LongMessage>
+        <ErrorCode xsi:type="xs:token">11607</ErrorCode>
+        <SeverityCode xmlns="urn:ebay:apis:eBLBaseComponents">Warning</SeverityCode>
+      </Errors>
+      <Version xmlns="urn:ebay:apis:eBLBaseComponents">124</Version>
+      <Build xmlns="urn:ebay:apis:eBLBaseComponents">000000</Build>
+      <DoExpressCheckoutPaymentResponseDetails xmlns="urn:ebay:apis:eBLBaseComponents" xsi:type="ebl:DoExpressCheckoutPaymentResponseDetailsType">
+        <Token xsi:type="ebl:ExpressCheckoutTokenType">EC-MY_TOKEN</Token>
+        <PaymentInfo xsi:type="ebl:PaymentInfoType">
+          <TransactionID>3K289148GS508731G</TransactionID>
+          <ParentTransactionID xsi:type="ebl:TransactionId"/>
+          <ReceiptID/>
+          <TransactionType xsi:type="ebl:PaymentTransactionCodeType">express-checkout</TransactionType>
+          <PaymentType xsi:type="ebl:PaymentCodeType">instant</PaymentType>
+          <PaymentDate xsi:type="xs:dateTime">2016-11-23T01:50:43Z</PaymentDate>
+          <GrossAmount currencyID="USD" xsi:type="cc:BasicAmountType">100.00</GrossAmount>
+          <FeeAmount currencyID="USD" xsi:type="cc:BasicAmountType">3.20</FeeAmount>
+          <TaxAmount currencyID="USD" xsi:type="cc:BasicAmountType">0.00</TaxAmount>
+          <ExchangeRate xsi:type="xs:string"/>
+          <PaymentStatus xsi:type="ebl:PaymentStatusCodeType">Refunded</PaymentStatus>
+          <PendingReason xsi:type="ebl:PendingStatusCodeType">none</PendingReason>
+          <ReasonCode xsi:type="ebl:ReversalReasonCodeType">none</ReasonCode>
+          <ProtectionEligibility xsi:type="xs:string">Eligible</ProtectionEligibility>
+          <ProtectionEligibilityType xsi:type="xs:string">ItemNotReceivedEligible,UnauthorizedPaymentEligible</ProtectionEligibilityType>
+          <SellerDetails xsi:type="ebl:SellerDetailsType">
+            <SecureMerchantAccountID xsi:type="ebl:UserIDType">MY_MERCHANT_ID</SecureMerchantAccountID>
+          </SellerDetails>
+        </PaymentInfo>
+        <SuccessPageRedirectRequested xsi:type="xs:string">false</SuccessPageRedirectRequested>
+        <CoupledPaymentInfo xsi:type="ebl:CoupledPaymentInfoType"/>
+      </DoExpressCheckoutPaymentResponseDetails>
+    </DoExpressCheckoutPaymentResponse>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>
