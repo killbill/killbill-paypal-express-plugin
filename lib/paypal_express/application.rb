@@ -106,7 +106,6 @@ end
 
 # curl -v http://127.0.0.1:9292/plugins/killbill-paypal-express/1.0/accounts/somebody@example.com
 get '/plugins/killbill-paypal-express/1.0/accounts/:email', :provides => 'json' do
-  # TODO: create an index on the table for email
   if ids = ::Killbill::PaypalExpress::PaypalExpressResponse.uniq.where(:payer_email => params[:email]).pluck(:kb_account_id)
     ids.to_json
   else
@@ -116,7 +115,6 @@ end
 
 # curl -v http://127.0.0.1:9292/plugins/killbill-paypal-express/1.0/payer_emails/41d95965-8213-4434-ac04-0f7dbe51988c
 get '/plugins/killbill-paypal-express/1.0/payer_emails/:kb_account_id', :provides => 'json' do
-  # TODO: make sure the table has an index for kb_account_id
   if emails = ::Killbill::PaypalExpress::PaypalExpressResponse.uniq.where(:kb_account_id => params[:kb_account_id]).where("payer_email IS NOT NULL").pluck(:payer_email)
     emails.to_json
   else
