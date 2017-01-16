@@ -113,6 +113,19 @@ get '/plugins/killbill-paypal-express/1.0/accounts/:email', :provides => 'json' 
   end
 end
 
+# curl -v http://127.0.0.1:9292/plugins/killbill-paypal-express/1.0/account_external_keys/somebody@example.com?kb_tenant_id=some_uuid
+get '/plugins/killbill-paypal-express/1.0/account_external_keys/:email', :provides => 'json' do
+  if ids = ::Killbill::PaypalExpress::PaypalExpressResponse.uniq.where(:payer_email => params[:email]).pluck(:kb_account_id)
+    kb_tenant_id = request.GET['kb_tenant_id']
+    kb_tenant = request.env['killbill_tenant']
+    kb_tenant_id ||= kb_tenant.id.to_s unless kb_tenant.nil?
+
+    plugin(session).get_external_keys_for_accounts(ids, kb_tenant_id).to_json
+  else
+    status 404
+  end
+end
+
 # curl -v http://127.0.0.1:9292/plugins/killbill-paypal-express/1.0/payer_emails/41d95965-8213-4434-ac04-0f7dbe51988c
 get '/plugins/killbill-paypal-express/1.0/payer_emails/:kb_account_id', :provides => 'json' do
   if emails = ::Killbill::PaypalExpress::PaypalExpressResponse.uniq.where(:kb_account_id => params[:kb_account_id]).where("payer_email IS NOT NULL").pluck(:payer_email)

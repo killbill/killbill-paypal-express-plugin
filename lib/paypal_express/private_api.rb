@@ -36,6 +36,11 @@ module Killbill #:nodoc:
         gateway                      = gateway(payment_processor_account_id, kb_tenant_id)
         gateway.redirect_url_for(response.token)
       end
+
+      def get_external_keys_for_accounts(kb_account_ids, kb_tenant_id)
+        context = kb_apis.create_context(kb_tenant_id)
+        kb_account_ids.map {|id| kb_apis.account_user_api.get_account_by_id(id, context).external_key }
+      end
     end
   end
 end
