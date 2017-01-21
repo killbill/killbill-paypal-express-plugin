@@ -342,7 +342,7 @@ module Killbill
         payment_infos[3].currency.should be_nil
         payment_infos[3].status.should == :ERROR
         payment_infos[3].gateway_error.should == 'Authorization has already been completed.'
-        payment_infos[3].gateway_error_code.should be_nil
+        payment_infos[3].gateway_error_code.should == "10602"
       end
 
       def authorize_and_void(kb_payment_id, payment_external_key, properties, payment_processor_account_id)
@@ -431,7 +431,7 @@ module Killbill
       end
 
       def subsequent_purchase(purchase_properties)
-        failed_purchase(purchase_properties, :ERROR, 'A successful transaction has already been completed for this token.')
+        failed_purchase(purchase_properties, :ERROR, 'A successful transaction has already been completed for this token.', '11607')
       end
 
       def failed_authorize(authorize_properties, status, msg, gateway_error_code=nil)
