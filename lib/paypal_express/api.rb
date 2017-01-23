@@ -131,10 +131,10 @@ module Killbill #:nodoc:
           # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
           payment_processor_account_id = find_value_from_properties(properties, :payment_processor_account_id)
           payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, token)
-          payer_id = find_payer_id(token, kb_account_id, context.tenant_id, payment_processor_account_id)
+          payer_info = get_payer_info(token, kb_account_id, context.tenant_id, payment_processor_account_id)
           options  = {
               :paypal_express_token         => token,
-              :paypal_express_payer_id      => payer_id,
+              :paypal_express_payer_id      => payer_info.payer_id,
               :payment_processor_account_id => payment_processor_account_id
           }
         end
@@ -281,19 +281,25 @@ module Killbill #:nodoc:
         @response_model.last_token(kb_account_id, kb_tenant_id)
       end
 
-      def find_payer_id(token, kb_account_id, kb_tenant_id, payment_processor_account_id)
-        raise 'Could not find the payer_id: the token is missing' if token.blank?
+      def get_payer_info(token,
+                         kb_account_id,
+                         kb_tenant_id,
+                         payment_processor_account_id,
+                         kb_payment_id = nil,
+                         kb_payment_transaction_id = nil,
+                         transaction_type = nil)
+        raise 'Could not retrieve the payer info: the token is missing' if token.blank?
 
         # Go to Paypal to get the Payer id (GetExpressCheckoutDetails call)
         payment_processor_account_id = payment_processor_account_id || :default
         gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
         gw_response                  = gateway.details_for(token)
-        response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, kb_tenant_id, payment_processor_account_id)
+        response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, kb_tenant_id, payment_processor_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type)
 
         raise response.message unless response.success?
-        raise "Could not find the payer_id for token #{token}" if response.payer_id.blank?
+        raise "Could not retrieve the payer info for token #{token}" if response.payer_id.blank?
 
-        response.payer_id
+        response
       end
 
       def add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
@@ -396,13 +402,14 @@ module Killbill #:nodoc:
           payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
           options[:payment_processor_account_id] = payment_processor_account_id
 
-          # Populate the Payer id if missing
-          options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
           begin
-            options[:payer_id] ||= find_payer_id(options[:token],
-                                                 kb_account_id,
-                                                 context.tenant_id,
-                                                 payment_processor_account_id)
+            payer_info = get_payer_info(options[:token],
+                                        kb_account_id,
+                                        context.tenant_id,
+                                        payment_processor_account_id,
+                                        kb_payment_id,
+                                        kb_payment_transaction_id,
+                                        transaction_type)
           rescue => e
             # Maybe invalid token?
             response = @response_model.create(:api_call                     => api_call_type,
@@ -419,6 +426,11 @@ module Killbill #:nodoc:
                                               :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
             return response.to_transaction_info_plugin(nil)
           end
+          options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
+          if options[:payer_id].nil?
+            options[:payer_id] = payer_info.payer_id
+          end
+          options[:payer_email] = payer_info.payer_email
 
           properties = merge_properties(properties, options)
           dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc, nil, {:payer_id => options[:payer_id]})
