@@ -266,7 +266,8 @@ module Killbill #:nodoc:
       def to_express_checkout_url(response, kb_tenant_id, options = {})
         payment_processor_account_id = options[:payment_processor_account_id] || :default
         gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
-        gateway.redirect_url_for(response.token)
+        review                       = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :review)
+        gateway.redirect_url_for(response.token, :review => review)
       end
 
       protected
