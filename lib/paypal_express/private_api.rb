@@ -34,7 +34,8 @@ module Killbill #:nodoc:
       def to_express_checkout_url(response, kb_tenant_id = nil, options = {})
         payment_processor_account_id = options[:payment_processor_account_id] || :default
         gateway                      = gateway(payment_processor_account_id, kb_tenant_id)
-        gateway.redirect_url_for(response.token)
+        review                       = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :review)
+        gateway.redirect_url_for(response.token, :review => review)
       end
 
       def get_external_keys_for_accounts(kb_account_ids, kb_tenant_id)
