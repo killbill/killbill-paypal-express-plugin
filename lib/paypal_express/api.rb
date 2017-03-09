@@ -288,7 +288,8 @@ module Killbill #:nodoc:
         payment_processor_account_id = payment_processor_account_id || :default
         gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
         gw_response                  = gateway.details_for(token)
-        response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, kb_tenant_id, payment_processor_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type)
+
+        response = @response_model.create_response(:details_for, kb_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type, payment_processor_account_id, kb_tenant_id, gw_response)
 
         raise response.message unless response.success?
         raise "Could not retrieve the payer info for token #{token}" if response.payer_id.blank?
