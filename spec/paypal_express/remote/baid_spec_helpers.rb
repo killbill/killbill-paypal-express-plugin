@@ -17,11 +17,13 @@ module Killbill
         kb_account_id = SecureRandom.uuid
         external_key, kb_account_id = create_kb_account(kb_account_id, @plugin.kb_apis.proxied_services[:account_user_api])
 
+        @private_plugin = ::Killbill::PaypalExpress::PrivatePaymentPlugin.new
+
         # Initiate the setup process
         response = create_token(kb_account_id, @call_context.tenant_id, options)
         token = response.token
 
-        login_and_confirm @plugin.to_express_checkout_url(response, @call_context.tenant_id)
+        login_and_confirm @private_plugin.to_express_checkout_url(response, @call_context.tenant_id)
 
         # Complete the setup process
         @properties = []
@@ -34,8 +36,7 @@ module Killbill
       private
 
       def create_token(kb_account_id, kb_tenant_id, options)
-        private_plugin = ::Killbill::PaypalExpress::PrivatePaymentPlugin.new
-        response = private_plugin.initiate_express_checkout(kb_account_id, kb_tenant_id, @amount, @currency, true, options)
+        response = @private_plugin.initiate_express_checkout(kb_account_id, kb_tenant_id, @amount, @currency, true, options)
         response.success.should be_true
         response
       end
