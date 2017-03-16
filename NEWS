@@ -1,3 +1,6 @@
+5.0.2
+    Make text on checkout button configurable (through review plugin property)
+
 5.0.1
     Always issue GetExpressCheckoutDetails during authorize or purchase to store payer info
     Store PayPal error codes

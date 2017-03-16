@@ -262,3 +262,4 @@ Below is a list of optional parameters for build_form_descriptor call. More deta
 | invoice_id                   | Your own invoice or tracking number. This will be overridden by order_id. |
 | notify_url                   | Your URL for receiving Instant Payment Notification (IPN) about this transaction. If you do not specify this value in the request, the notification URL from your Merchant Profile is used, if one exists.|
 | items                        | This parameter must be a JSON Array that contains a list of Hashes with keys of `name`, `number`, `quantity`, `amount`, `description`, `url` and `category`. |
+| review                       | If false, checkout button is set to Pay now. |
