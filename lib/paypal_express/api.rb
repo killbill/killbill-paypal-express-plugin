@@ -84,7 +84,14 @@ module Killbill #:nodoc:
       end
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
-        t_info_plugins = super(kb_account_id, kb_payment_id, properties, context)
+        ignored_api_calls = [:details_for]
+        responses = @response_model.from_kb_payment_id(@transaction_model, kb_payment_id, context.tenant_id)
+        responses = responses.reject do |response|
+          ignored_api_calls.include?(response.api_call.to_sym)
+        end
+        t_info_plugins = responses.collect do |response|
+          response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
+        end
         # Should never happen...
         return [] if t_info_plugins.nil?
 

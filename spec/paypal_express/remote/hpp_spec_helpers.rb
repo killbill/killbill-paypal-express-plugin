@@ -1,3 +1,4 @@
+require 'spec_helper'
 require_relative 'browser_helpers'
 
 module Killbill
@@ -53,27 +54,18 @@ module Killbill
         payer_id = find_value_from_properties(payment_response.properties, 'payerId')
         payer_id.should_not be_nil
 
+        validate_details_for(kb_payment_id, :PURCHASE, payer_id)
         # Verify GET API
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
-        payment_infos.size.should == 2
-        # details_for
+        payment_infos.size.should == 1
+        # purchase
         payment_infos[0].kb_payment_id.should == kb_payment_id
         payment_infos[0].transaction_type.should == :PURCHASE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
+        payment_infos[0].amount.should == @amount
+        payment_infos[0].currency.should == @currency
         payment_infos[0].status.should == :PROCESSED
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # purchase
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :PURCHASE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
-        payment_infos[1].status.should == :PROCESSED
-        payment_infos[1].gateway_error.should == 'Success'
-        payment_infos[1].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
 
         # Try a full refund
@@ -84,33 +76,15 @@ module Killbill
 
         # Verify GET API
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
-        payment_infos.size.should == 3
-        # details_for
-        payment_infos[0].kb_payment_id.should == kb_payment_id
-        payment_infos[0].transaction_type.should == :PURCHASE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
-        payment_infos[0].status.should == :PROCESSED
-        payment_infos[0].gateway_error.should == 'Success'
-        payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # purchase
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :PURCHASE
+        payment_infos.size.should == 2
+        # refund
+        payment_infos[1].kb_payment_id.should.should == kb_payment_id
+        payment_infos[1].transaction_type.should == :REFUND
         payment_infos[1].amount.should == @amount
         payment_infos[1].currency.should == @currency
         payment_infos[1].status.should == :PROCESSED
         payment_infos[1].gateway_error.should == 'Success'
         payment_infos[1].gateway_error_code.should be_nil
-        # refund
-        payment_infos[2].kb_payment_id.should.should == kb_payment_id
-        payment_infos[2].transaction_type.should == :REFUND
-        payment_infos[2].amount.should == @amount
-        payment_infos[2].currency.should == @currency
-        payment_infos[2].status.should == :PROCESSED
-        payment_infos[2].gateway_error.should == 'Success'
-        payment_infos[2].gateway_error_code.should be_nil
       end
 
       def authorize_capture_and_refund(kb_payment_id, payment_external_key, properties, payment_processor_account_id)
@@ -122,31 +96,22 @@ module Killbill
         payer_id = find_value_from_properties(payment_response.properties, 'payerId')
         payer_id.should_not be_nil
 
+        validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
         # Verify GET AUTHORIZED PAYMENT
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
-        payment_infos.size.should == 2
-        # details_for
+        payment_infos.size.should == 1
+        # authorize
         payment_infos[0].kb_payment_id.should == kb_payment_id
         payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
+        payment_infos[0].amount.should == @amount
+        payment_infos[0].currency.should == @currency
         payment_infos[0].status.should == :PROCESSED
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # authorize
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
-        payment_infos[1].status.should == :PROCESSED
-        payment_infos[1].gateway_error.should == 'Success'
-        payment_infos[1].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[1].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[1].properties, 'paymentInfoPaymentStatus').should == 'Pending'
-        find_value_from_properties(payment_infos[1].properties, 'paymentInfoPendingReason').should == 'authorization'
-        find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
+        find_value_from_properties(payment_infos[0].properties, 'paymentInfoPaymentStatus').should == 'Pending'
+        find_value_from_properties(payment_infos[0].properties, 'paymentInfoPendingReason').should == 'authorization'
+        find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
 
         # Trigger the capture
         payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
@@ -157,36 +122,17 @@ module Killbill
         # Verify GET CAPTURED PAYMENT
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
         # Two expected transactions: one auth and one capture
-        payment_infos.size.should == 3
-        # details_for
-        payment_infos[0].kb_payment_id.should == kb_payment_id
-        payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
-        payment_infos[0].status.should == :PROCESSED
-        payment_infos[0].gateway_error.should == 'Success'
-        payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # authorize
+        payment_infos.size.should == 2
+        # capture
         payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
+        payment_infos[1].transaction_type.should == :CAPTURE
         payment_infos[1].amount.should == @amount
         payment_infos[1].currency.should == @currency
         payment_infos[1].status.should == :PROCESSED
         payment_infos[1].gateway_error.should == 'Success'
         payment_infos[1].gateway_error_code.should be_nil
+        find_value_from_properties(payment_infos[1].properties, 'paymentInfoPaymentStatus').should == 'Completed'
         find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
-        #capture
-        payment_infos[2].kb_payment_id.should == kb_payment_id
-        payment_infos[2].transaction_type.should == :CAPTURE
-        payment_infos[2].amount.should == @amount
-        payment_infos[2].currency.should == @currency
-        payment_infos[2].status.should == :PROCESSED
-        payment_infos[2].gateway_error.should == 'Success'
-        payment_infos[2].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[2].properties, 'paymentInfoPaymentStatus').should == 'Completed'
-        find_value_from_properties(payment_infos[2].properties, 'payment_processor_account_id').should == payment_processor_account_id
 
         # Try a full refund
         refund_response = @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, [], @call_context)
@@ -196,44 +142,16 @@ module Killbill
 
         # Verify GET API
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
-        payment_infos.size.should == 4
-        # details_for
-        payment_infos[0].kb_payment_id.should == kb_payment_id
-        payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
-        payment_infos[0].status.should == :PROCESSED
-        payment_infos[0].gateway_error.should == 'Success'
-        payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # authorize
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
-        payment_infos[1].status.should == :PROCESSED
-        payment_infos[1].gateway_error.should == 'Success'
-        payment_infos[1].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
-        # capture
-        payment_infos[2].kb_payment_id.should == kb_payment_id
-        payment_infos[2].transaction_type.should == :CAPTURE
+        payment_infos.size.should == 3
+        # refund
+        payment_infos[2].kb_payment_id.should.should == kb_payment_id
+        payment_infos[2].transaction_type.should == :REFUND
         payment_infos[2].amount.should == @amount
         payment_infos[2].currency.should == @currency
         payment_infos[2].status.should == :PROCESSED
         payment_infos[2].gateway_error.should == 'Success'
         payment_infos[2].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[2].properties, 'payment_processor_account_id').should == payment_processor_account_id
-        # refund
-        payment_infos[3].kb_payment_id.should.should == kb_payment_id
-        payment_infos[3].transaction_type.should == :REFUND
-        payment_infos[3].amount.should == @amount
-        payment_infos[3].currency.should == @currency
-        payment_infos[3].status.should == :PROCESSED
-        payment_infos[3].gateway_error.should == 'Success'
-        payment_infos[3].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[3].properties, 'payment_processor_account_id').should == payment_processor_account_id
       end
 
       def authorize_and_double_capture(kb_payment_id, payment_external_key, properties)
@@ -245,26 +163,17 @@ module Killbill
         payer_id = find_value_from_properties(payment_response.properties, 'payerId')
         payer_id.should_not be_nil
 
+        validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
-        payment_infos.size.should == 2
-        # details_for
+        payment_infos.size.should == 1
+        # autorize
         payment_infos[0].kb_payment_id.should == kb_payment_id
         payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
+        payment_infos[0].amount.should == @amount
+        payment_infos[0].currency.should == @currency
         payment_infos[0].status.should == :PROCESSED
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # autorize
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
-        payment_infos[1].status.should == :PROCESSED
-        payment_infos[1].gateway_error.should == 'Success'
-        payment_infos[1].gateway_error_code.should be_nil
 
         # Trigger the capture
         payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
@@ -273,33 +182,15 @@ module Killbill
         payment_response.transaction_type.should == :CAPTURE
 
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
-        payment_infos.size.should == 3
-        # details_for
-        payment_infos[0].kb_payment_id.should == kb_payment_id
-        payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
-        payment_infos[0].status.should == :PROCESSED
-        payment_infos[0].gateway_error.should == 'Success'
-        payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # autorize
+        payment_infos.size.should == 2
+        # capture
         payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
+        payment_infos[1].transaction_type.should == :CAPTURE
         payment_infos[1].amount.should == @amount
         payment_infos[1].currency.should == @currency
         payment_infos[1].status.should == :PROCESSED
         payment_infos[1].gateway_error.should == 'Success'
         payment_infos[1].gateway_error_code.should be_nil
-        # capture
-        payment_infos[2].kb_payment_id.should == kb_payment_id
-        payment_infos[2].transaction_type.should == :CAPTURE
-        payment_infos[2].amount.should == @amount
-        payment_infos[2].currency.should == @currency
-        payment_infos[2].status.should == :PROCESSED
-        payment_infos[2].gateway_error.should == 'Success'
-        payment_infos[2].gateway_error_code.should be_nil
 
         # Trigger a capture again with full amount
         payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
@@ -308,41 +199,15 @@ module Killbill
         payment_response.transaction_type.should == :CAPTURE
 
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
-        payment_infos.size.should == 4
-        # details_for
-        payment_infos[0].kb_payment_id.should == kb_payment_id
-        payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
-        payment_infos[0].status.should == :PROCESSED
-        payment_infos[0].gateway_error.should == 'Success'
-        payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # authorize
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
-        payment_infos[1].status.should == :PROCESSED
-        payment_infos[1].gateway_error.should == 'Success'
-        payment_infos[1].gateway_error_code.should be_nil
-        # capture
-        payment_infos[2].kb_payment_id.should == kb_payment_id
-        payment_infos[2].transaction_type.should == :CAPTURE
-        payment_infos[2].amount.should == @amount
-        payment_infos[2].currency.should == @currency
-        payment_infos[2].status.should == :PROCESSED
-        payment_infos[2].gateway_error.should == 'Success'
-        payment_infos[2].gateway_error_code.should be_nil
+        payment_infos.size.should == 3
         # capture again
-        payment_infos[3].kb_payment_id.should.should == kb_payment_id
-        payment_infos[3].transaction_type.should == :CAPTURE
-        payment_infos[3].amount.should be_nil
-        payment_infos[3].currency.should be_nil
-        payment_infos[3].status.should == :ERROR
-        payment_infos[3].gateway_error.should == 'Authorization has already been completed.'
-        payment_infos[3].gateway_error_code.should == "10602"
+        payment_infos[2].kb_payment_id.should.should == kb_payment_id
+        payment_infos[2].transaction_type.should == :CAPTURE
+        payment_infos[2].amount.should be_nil
+        payment_infos[2].currency.should be_nil
+        payment_infos[2].status.should == :ERROR
+        payment_infos[2].gateway_error.should == 'Authorization has already been completed.'
+        payment_infos[2].gateway_error_code.should == "10602"
       end
 
       def authorize_and_void(kb_payment_id, payment_external_key, properties, payment_processor_account_id)
@@ -354,28 +219,19 @@ module Killbill
         payer_id = find_value_from_properties(payment_response.properties, 'payerId')
         payer_id.should_not be_nil
 
+        validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
         # Verify get_payment_info
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
-        payment_infos.size.should == 2
-        # details_for
+        payment_infos.size.should == 1
+        # authorize
         payment_infos[0].kb_payment_id.should == kb_payment_id
         payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
+        payment_infos[0].amount.should == @amount
+        payment_infos[0].currency.should == @currency
         payment_infos[0].status.should == :PROCESSED
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # authorize
-        payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
-        payment_infos[1].status.should == :PROCESSED
-        payment_infos[1].gateway_error.should == 'Success'
-        payment_infos[1].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
+        find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
 
         # Trigger the void
         payment_response = @plugin.void_payment(@pm.kb_account_id, kb_payment_id, payment_external_key, @pm.kb_payment_method_id, properties, @call_context)
@@ -385,33 +241,14 @@ module Killbill
         # Verify get_payment_info
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
         # Two expected transactions: one auth and one capture, plus the details call
-        payment_infos.size.should == 3
-        # details_for
-        payment_infos[0].kb_payment_id.should == kb_payment_id
-        payment_infos[0].transaction_type.should == :AUTHORIZE
-        payment_infos[0].amount.should be_nil
-        payment_infos[0].currency.should be_nil
-        payment_infos[0].status.should == :PROCESSED
-        payment_infos[0].gateway_error.should == 'Success'
-        payment_infos[0].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
-        find_value_from_properties(payment_infos[0].properties, 'payerName').should_not be_nil
-        # authorize
+        payment_infos.size.should == 2
+        # void
         payment_infos[1].kb_payment_id.should == kb_payment_id
-        payment_infos[1].transaction_type.should == :AUTHORIZE
-        payment_infos[1].amount.should == @amount
-        payment_infos[1].currency.should == @currency
+        payment_infos[1].transaction_type.should == :VOID
         payment_infos[1].status.should == :PROCESSED
         payment_infos[1].gateway_error.should == 'Success'
         payment_infos[1].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == payment_processor_account_id
-        # void
-        payment_infos[2].kb_payment_id.should == kb_payment_id
-        payment_infos[2].transaction_type.should == :VOID
-        payment_infos[2].status.should == :PROCESSED
-        payment_infos[2].gateway_error.should == 'Success'
-        payment_infos[2].gateway_error_code.should be_nil
-        find_value_from_properties(payment_infos[2].properties, 'payment_processor_account_id').should == payment_processor_account_id
       end
 
       def purchase_with_missing_token
@@ -444,15 +281,14 @@ module Killbill
 
         # Verify GET API
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
-        # we might have an extra details_for call
-        payment_infos.size.should be_in([1, 2])
-        payment_infos[-1].kb_payment_id.should == kb_payment_id
-        payment_infos[-1].transaction_type.should == :AUTHORIZE
-        payment_infos[-1].amount.should be_nil
-        payment_infos[-1].currency.should be_nil
-        payment_infos[-1].status.should == status
-        payment_infos[-1].gateway_error.should == msg
-        payment_infos[-1].gateway_error_code.should == gateway_error_code
+        payment_infos.size.should == 1
+        payment_infos[0].kb_payment_id.should == kb_payment_id
+        payment_infos[0].transaction_type.should == :AUTHORIZE
+        payment_infos[0].amount.should be_nil
+        payment_infos[0].currency.should be_nil
+        payment_infos[0].status.should == status
+        payment_infos[0].gateway_error.should == msg
+        payment_infos[0].gateway_error_code.should == gateway_error_code
       end
 
       def failed_purchase(purchase_properties, status, msg, gateway_error_code=nil)
@@ -466,15 +302,14 @@ module Killbill
         # Verify GET API
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [], @call_context)
         token = find_value_from_properties(purchase_properties, 'token')
-        # we might have an extra details_for call
-        payment_infos.size.should be_in([1, 2])
-        payment_infos[-1].kb_payment_id.should == kb_payment_id
-        payment_infos[-1].transaction_type.should == :PURCHASE
-        payment_infos[-1].amount.should be_nil
-        payment_infos[-1].currency.should be_nil
-        payment_infos[-1].status.should == status
-        payment_infos[-1].gateway_error.should == msg
-        payment_infos[-1].gateway_error_code.should == gateway_error_code
+        payment_infos.size.should == 1
+        payment_infos[0].kb_payment_id.should == kb_payment_id
+        payment_infos[0].transaction_type.should == :PURCHASE
+        payment_infos[0].amount.should be_nil
+        payment_infos[0].currency.should be_nil
+        payment_infos[0].status.should == status
+        payment_infos[0].gateway_error.should == msg
+        payment_infos[0].gateway_error_code.should == gateway_error_code
       end
 
       private

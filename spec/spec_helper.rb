@@ -22,6 +22,16 @@ ActiveRecord::Base.establish_connection(
 # Create the schema
 require File.expand_path(File.dirname(__FILE__) + '../../db/schema.rb')
 
+
+def validate_details_for(kb_payment_id, transaction_type, payer_id)
+  details_for = ::Killbill::PaypalExpress::PaypalExpressResponse.where(:kb_payment_id => kb_payment_id).where(:api_call => :details_for).last
+  details_for.message.should == "Success"
+  details_for.transaction_type.to_sym.should == transaction_type.to_sym
+  details_for.payer_id.should == payer_id
+  details_for.payer_name.should_not be_nil
+end
+
+
 class PaypalExpressJavaPaymentApi < ::Killbill::Plugin::ActiveMerchant::RSpec::FakeJavaPaymentApi
 
   def initialize(plugin)
