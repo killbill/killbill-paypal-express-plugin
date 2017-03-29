@@ -1,3 +1,6 @@
+5.0.3
+    Fix for https://github.com/killbill/killbill-paypal-express-plugin/issues/26
+
 5.0.2
     Make text on checkout button configurable (through review plugin property)
 
