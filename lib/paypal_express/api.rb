@@ -84,7 +84,14 @@ module Killbill #:nodoc:
       end
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
-        t_info_plugins = super(kb_account_id, kb_payment_id, properties, context)
+        ignored_api_calls = [:details_for]
+        responses = @response_model.from_kb_payment_id(@transaction_model, kb_payment_id, context.tenant_id)
+        responses = responses.reject do |response|
+          ignored_api_calls.include?(response.api_call.to_sym)
+        end
+        t_info_plugins = responses.collect do |response|
+          response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
+        end
         # Should never happen...
         return [] if t_info_plugins.nil?
 
@@ -288,7 +295,8 @@ module Killbill #:nodoc:
         payment_processor_account_id = payment_processor_account_id || :default
         gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
         gw_response                  = gateway.details_for(token)
-        response, transaction        = save_response_and_transaction(gw_response, :details_for, kb_account_id, kb_tenant_id, payment_processor_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type)
+
+        response = @response_model.create_response(:details_for, kb_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type, payment_processor_account_id, kb_tenant_id, gw_response)
 
         raise response.message unless response.success?
         raise "Could not retrieve the payer info for token #{token}" if response.payer_id.blank?

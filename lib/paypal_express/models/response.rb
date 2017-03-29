@@ -63,6 +63,13 @@ module Killbill #:nodoc:
               model)
       end
 
+      def self.create_response(api_call, kb_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type, payment_processor_account_id, kb_tenant_id, gw_response, extra_params = {}, model = ::Killbill::PaypalExpress::PaypalExpressResponse)
+        response = model.from_response(api_call, kb_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type, payment_processor_account_id, kb_tenant_id, gw_response, extra_params, model)
+        response.save!(shared_activerecord_options)
+        response
+      end
+
+
       def self.last_token(kb_account_id, kb_tenant_id)
         response = where(:api_call => 'initiate_express_checkout',
                          :success => true,
