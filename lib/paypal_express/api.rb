@@ -3,7 +3,7 @@ module Killbill #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::ActiveMerchant::PaymentPlugin
 
       THREE_HOURS_AGO = (3*3600)
-      FIVE_MINUTES_AGO = (1 * 300)
+      FIVE_MINUTES_AGO = 300
 
       def initialize
         gateway_builder = Proc.new do |config|
