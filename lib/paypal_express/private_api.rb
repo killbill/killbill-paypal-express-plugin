@@ -1,6 +1,12 @@
 module Killbill #:nodoc:
   module PaypalExpress #:nodoc:
     class PrivatePaymentPlugin < ::Killbill::Plugin::ActiveMerchant::PrivatePaymentPlugin
+
+      ONE_HOUR_AGO = 3600
+      STATUS = {:CAPTURE   => {:success_status => 'Completed', :type => 'Payment'},
+                :AUTHORIZE => {:success_status => 'Pending',   :type => 'Authorization'},
+                :REFUND    => {:success_status => 'Completed', :type => 'Refund'}}
+
       def initialize(session = {})
         super(:paypal_express,
               ::Killbill::PaypalExpress::PaypalExpressPaymentMethod,
@@ -41,6 +47,30 @@ module Killbill #:nodoc:
       def get_external_keys_for_accounts(kb_account_ids, kb_tenant_id)
         context = kb_apis.create_context(kb_tenant_id)
         kb_account_ids.map {|id| kb_apis.account_user_api.get_account_by_id(id, context).external_key }
+      end
+
+      def fix_unknown_transaction(plugin_response, trx_plugin_info, gateway, kb_account_id, kb_tenant_id)
+        status, transaction_id, type = search_transaction(trx_plugin_info.created_date - ONE_HOUR_AGO,
+                                                          trx_plugin_info.amount,
+                                                          trx_plugin_info.currency,
+                                                          gateway,
+                                                          trx_plugin_info.kb_transaction_payment_id)
+        return false if status.blank? || transaction_id.blank? || type.blank?
+
+        if type == STATUS[trx_plugin_info.transaction_type][:type] &&
+           status == STATUS[trx_plugin_info.transaction_type][:success_status]
+          plugin_response.transition_to_success transaction_id, trx_plugin_info
+          logger.info("Fix UNDEFINED kb_transaction_id='#{trx_plugin_info.kb_transaction_payment_id}' to PROCESSED")
+          return true
+        end
+
+        false
+      end
+
+      def search_transaction(start_time, amount, currency, gateway, kb_payment_transaction_id)
+        options = {:start_date => start_time, :invoice_id => kb_payment_transaction_id, :amount => amount, :currency => currency}
+        response = gateway.transaction_search options
+        [response.params['status'], response.authorization, response.params['type']]
       end
     end
   end

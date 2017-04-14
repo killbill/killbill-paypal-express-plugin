@@ -312,6 +312,41 @@ module Killbill
         payment_infos[0].gateway_error_code.should == gateway_error_code
       end
 
+      def transition_last_response_to_UNDEFINED(expected_nb_transactions, kb_payment_id, delete_last_trx = true)
+        Killbill::PaypalExpress::PaypalExpressTransaction.last.delete if delete_last_trx
+        response = Killbill::PaypalExpress::PaypalExpressResponse.last
+        initial_auth = response.authorization
+        response.update(:authorization => nil, :message => {:payment_plugin_status => 'UNDEFINED'}.to_json)
+
+        skip_gw = Killbill::Plugin::Model::PluginProperty.new
+        skip_gw.key = 'skip_gw'
+        skip_gw.value = 'true'
+        properties_with_skip_gw = [skip_gw]
+
+        # Set skip_gw=true, to avoid calling the report API
+        transaction_info_plugins = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties_with_skip_gw, @call_context)
+        transaction_info_plugins.size.should == expected_nb_transactions
+        transaction_info_plugins.last.status.should eq(:UNDEFINED)
+
+        [response, initial_auth]
+      end
+
+      def verify_janitor_transition(nb_trx_plugin_info, trx_type, trx_status, kb_payment_id, delete_last_trx = true, hard_expiration_date = 0, janitor_delay = 0)
+        transition_last_response_to_UNDEFINED(nb_trx_plugin_info, kb_payment_id, delete_last_trx)
+        # wait 5 sec for PayPal to populate the record in search endpoint
+        sleep 5
+        janitor_delay_threshold = Killbill::Plugin::Model::PluginProperty.new
+        janitor_delay_threshold.key = 'janitor_delay_threshold'
+        janitor_delay_threshold.value = janitor_delay
+        cancel_threshold = Killbill::Plugin::Model::PluginProperty.new
+        cancel_threshold.key = 'cancel_threshold'
+        cancel_threshold.value = hard_expiration_date
+        transaction_info_plugins = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, [janitor_delay_threshold, cancel_threshold], @call_context)
+        transaction_info_plugins.size.should == nb_trx_plugin_info
+        transaction_info_plugins.last.status.should eq(trx_status)
+        transaction_info_plugins.last.transaction_type.should eq(trx_type)
+      end
+
       private
 
       def verify_payment_method(kb_account_id = nil)

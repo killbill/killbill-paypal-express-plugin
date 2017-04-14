@@ -3,6 +3,7 @@ module Killbill #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::ActiveMerchant::PaymentPlugin
 
       THREE_HOURS_AGO = (3*3600)
+      FIVE_MINUTES_AGO = (1 * 300)
 
       def initialize
         gateway_builder = Proc.new do |config|
@@ -84,37 +85,32 @@ module Killbill #:nodoc:
       end
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
-        ignored_api_calls = [:details_for]
-        responses = @response_model.from_kb_payment_id(@transaction_model, kb_payment_id, context.tenant_id)
-        responses = responses.reject do |response|
-          ignored_api_calls.include?(response.api_call.to_sym)
-        end
-        t_info_plugins = responses.collect do |response|
-          response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
-        end
+        filtered_plugin_info, plugin_info, with_only_pending_trx = get_raw_payment_info(kb_payment_id, context)
         # Should never happen...
-        return [] if t_info_plugins.nil?
+        return [] if filtered_plugin_info.nil?
 
-        # Completed purchases/authorizations will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase/authorize')
-        # Other transaction types don't support the :PENDING state
-        target_transaction_types = [:PURCHASE, :AUTHORIZE]
-        only_pending_transaction = t_info_plugins.find { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status != :PENDING }.nil?
-        t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
-
-        # If its token has expired, cancel the payment and update the response row.
-        if only_pending_transaction
-          return t_info_plugins unless token_expired(t_info_plugins.last)
-          begin
-            cancel_pending_transaction(t_info_plugins.last).nil?
-            logger.info("Cancel pending kb_payment_id='#{t_info_plugins.last.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugins.last.kb_transaction_payment_id}'")
-            super(kb_account_id, kb_payment_id, properties, context)
-          rescue => e
-            logger.warn("Unexpected exception while canceling pending kb_payment_id='#{t_info_plugins.last.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugins.last.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
-            t_info_plugins
-          end
-        else
-          t_info_plugins_without_pending
+        options = properties_to_hash(properties)
+        # We won't be in a state where we have both a pending and unknown plugin infos; so we just return here.
+        if fix_unknown_transactions(kb_payment_id, plugin_info, options, kb_account_id, context) ||
+           cancel_pending_transactions(filtered_plugin_info, with_only_pending_trx)
+          return get_raw_payment_info(kb_payment_id, context)[0]
         end
+
+        filtered_plugin_info
+      end
+
+      def cancel_pending_transactions(t_info_plugins, only_pending_trx)
+        return false unless only_pending_trx && token_expired(t_info_plugins.last)
+
+        begin
+          cancel_pending_transaction(t_info_plugins.last).nil?
+          logger.info("Cancel pending kb_payment_id='#{t_info_plugins.last.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugins.last.kb_transaction_payment_id}'")
+          return true
+        rescue => e
+          logger.warn("Unexpected exception while canceling pending kb_payment_id='#{t_info_plugins.last.kb_payment_id}', kb_payment_transaction_id='#{t_info_plugins.last.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
+        end
+
+        false
       end
 
       def search_payments(search_key, offset, limit, properties, context)
@@ -557,6 +553,77 @@ module Killbill #:nodoc:
           sub_hash[key] = to_cents((sub_hash[key] || '0').to_f, currency) if amount_keys.include?(key) && !sub_hash[key].nil?
         end
         sub_hash.empty? ? nil : sub_hash
+      end
+
+      def fix_unknown_transactions(payment_id, trx_plugin_info, options, kb_account_id, context)
+        unknown_transactions_info = trx_plugin_info.find_all { |t_info_plugin| t_info_plugin.status == :UNDEFINED }
+        now = Time.parse(@clock.get_clock.get_utc_now.to_s)
+
+        token = trx_plugin_info.map {|plugin_info| find_value_from_properties(plugin_info.properties, 'authorization')}.find {|token| !token.blank?}
+        if token.nil?
+          logger.warn("Unable to fix UNDEFINED kb_payment_id='#{payment_id}'. Unable to find its token.")
+          return false
+        end
+
+        need_refresh = false
+        payment_processor_account_id = find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, token) || :default
+        unknown_transactions_info.each do |unknown_trx_info|
+          delay_since_transaction = now - unknown_trx_info.created_date
+          delay_since_transaction = 0 if delay_since_transaction < 0
+
+          # Do nothing before the delayed checking time
+          janitor_delay_threshold = (Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :janitor_delay_threshold) || FIVE_MINUTES_AGO).to_i
+          next unless delay_since_transaction >= janitor_delay_threshold
+
+          paypal_response_id = find_value_from_properties(unknown_trx_info.properties, 'paypalExpressResponseId')
+          if paypal_response_id.nil?
+            logger.warn("Unable to fix UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}' (paypal_response_id not specified)")
+            next
+          end
+          response = PaypalExpressResponse.find_by(:id => paypal_response_id)
+
+          fixed = false
+          begin
+            gateway  = lookup_gateway(payment_processor_account_id, context.tenant_id)
+            fixed    = @private_api.fix_unknown_transaction(response, unknown_trx_info, gateway, kb_account_id, context.tenant_id)
+          rescue => e
+            logger.warn("Unable to fix UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
+          end
+
+          if !fixed
+            # hard expiration limit
+            janitor_cancellation_threshold = (Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :cancel_threshold) || THREE_HOURS_AGO).to_i
+            if delay_since_transaction >= janitor_cancellation_threshold
+              response.transition_to_plugin_failure
+              logger.info("Expire UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}' to CANCELED")
+              need_refresh = true
+            end
+          else
+            need_refresh = true
+          end
+        end
+
+        need_refresh
+      end
+
+      def get_raw_payment_info(kb_payment_id, context)
+        ignored_api_calls = [:details_for]
+        responses = @response_model.from_kb_payment_id(@transaction_model, kb_payment_id, context.tenant_id)
+        responses = responses.reject do |response|
+          ignored_api_calls.include?(response.api_call.to_sym)
+        end
+        t_info_plugins = responses.collect do |response|
+          response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
+        end
+
+        # Completed purchases/authorizations will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase/authorize')
+        # Other transaction types don't support the :PENDING state
+        target_transaction_types = [:PURCHASE, :AUTHORIZE]
+        with_only_pending_trx = t_info_plugins.find { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status != :PENDING }.nil?
+
+        # Filter out the pending transaction if there is already a response tied with the same transaction but indicating a final state
+        t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
+        [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
       end
     end
   end
