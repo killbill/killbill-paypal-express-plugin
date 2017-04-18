@@ -60,7 +60,7 @@ module Killbill #:nodoc:
         if type == STATUS[trx_plugin_info.transaction_type][:type] &&
            status == STATUS[trx_plugin_info.transaction_type][:success_status]
           plugin_response.transition_to_success transaction_id, trx_plugin_info
-          logger.info("Fix UNDEFINED kb_transaction_id='#{trx_plugin_info.kb_transaction_payment_id}' to PROCESSED")
+          logger.info("Fixed UNDEFINED kb_transaction_id='#{trx_plugin_info.kb_transaction_payment_id}' to PROCESSED")
           return true
         end
 
