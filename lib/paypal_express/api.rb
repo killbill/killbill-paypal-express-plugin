@@ -586,6 +586,7 @@ module Killbill #:nodoc:
           begin
             gateway  = lookup_gateway(payment_processor_account_id, context.tenant_id)
             fixed    = @private_api.fix_unknown_transaction(response, unknown_trx_info, gateway, kb_account_id, context.tenant_id)
+            logger.info("Unable to fix UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}' (not found in PayPal)") unless fixed
           rescue => e
             logger.warn("Unable to fix UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
           end
