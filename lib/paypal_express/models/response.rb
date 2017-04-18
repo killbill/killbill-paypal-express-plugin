@@ -146,6 +146,72 @@ module Killbill #:nodoc:
 
         t_info_plugin
       end
+
+      def transition_to_plugin_failure
+        transition_to_failure
+      end
+
+      def transition_to_payment_failure(transaction_id)
+        transition_to_failure false, {:authorization => transaction_id}
+      end
+
+      def transition_to_failure(is_plugin_failure = true, params = {})
+        begin
+          error_details = JSON.parse(message)
+          original_message = nil
+        rescue
+          error_details = {}
+          original_message = message
+        end
+        error_details['original_message'] = original_message unless original_message.blank?
+        error_details['payment_plugin_status'] = is_plugin_failure ? 'CANCELED' : 'ERROR'
+
+        updated_attributes = {
+            :message => error_details.to_json,
+            :success => false,
+            :updated_at => Time.now.utc
+        }.merge!(params)
+
+        # Update the response row
+        update!(updated_attributes)
+      end
+
+      def transition_to_success(transaction_id, trx_plugin_info)
+        begin
+          new_message = JSON.parse(message)
+          original_message = nil
+        rescue
+          new_message = {}
+          original_message = message
+        end
+        new_message['original_message'] = original_message unless original_message.blank?
+        new_message['payment_plugin_status'] = 'PROCESSED'
+        new_message['janitor'] = 'Janitor transitioned the response to success'
+
+        updated_attributes = {
+            :message => new_message.to_json,
+            :authorization => transaction_id,
+            :success => true,
+            :updated_at => Time.now.utc
+        }
+
+        # Update the response row
+        update!(updated_attributes)
+
+        # Create the transaction row if needed (cannot have been created before or the state wouldn't have been UNDEFINED)
+        build_paypal_express_transaction(:kb_account_id => kb_account_id,
+                                         :kb_tenant_id => kb_tenant_id,
+                                         :amount_in_cents => trx_plugin_info.amount,
+                                         :currency => trx_plugin_info.currency,
+                                         :api_call => api_call,
+                                         :kb_payment_id => kb_payment_id,
+                                         :kb_payment_transaction_id => kb_payment_transaction_id,
+                                         :transaction_type => transaction_type,
+                                         :payment_processor_account_id => payment_processor_account_id,
+                                         :txn_id => txn_id,
+                                         :created_at => updated_at,
+                                         :updated_at => updated_at).save!
+      end
     end
   end
 end

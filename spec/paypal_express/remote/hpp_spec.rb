@@ -13,6 +13,11 @@ shared_examples 'hpp_spec_common' do
     @plugin.kb_apis.proxied_services[:payment_api].delete_all_payments
   end
 
+  it 'should return an empty list of plugin info if payment does not exist' do
+    payment_plugin_info = @plugin.get_payment_info(@pm.kb_account_id, SecureRandom.uuid, [], @call_context)
+    payment_plugin_info.size.should == 0
+  end
+
   it 'should generate forms correctly' do
     ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
@@ -368,6 +373,105 @@ shared_examples 'hpp_spec_common' do
     payment_infos[0].status.should == :CANCELED
     payment_infos[0].gateway_error.should == 'Token expired. Payment Canceled by Janitor.'
     payment_infos[0].gateway_error_code.should be_nil
+  end
+
+  it 'should fix the unknown transactions to success' do
+    [:AUTHORIZE, :CAPTURE, :REFUND].each do |type|
+      payment_external_key = SecureRandom.uuid
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          :create_pending_payment => true,
+          :payment_processor_account_id => @payment_processor_account_id,
+          :auth_mode => true
+      )
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      kb_payment_id = validate_form_property(form, 'kb_payment_id')
+      kb_trx_id = validate_form_property(form, 'kb_transaction_id')
+      validate_token(form)
+
+      @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, kb_trx_id, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      nb_plugin_info = 1
+      if type == :AUTHORIZE
+        verify_janitor_transition nb_plugin_info, type, :PROCESSED, kb_payment_id
+        # Be able to capture
+        payment_response = @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+        payment_response.amount.should == @amount
+        payment_response.transaction_type.should == :CAPTURE
+      elsif type == :CAPTURE
+        nb_plugin_info = 2
+        @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        verify_janitor_transition nb_plugin_info, type, :PROCESSED, kb_payment_id
+        # Be able to refund
+        payment_response = @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+        payment_response.amount.should == @amount
+        payment_response.transaction_type.should == :REFUND
+      elsif type == :REFUND
+        nb_plugin_info = 3
+        @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        verify_janitor_transition nb_plugin_info, type, :PROCESSED, kb_payment_id
+      end
+    end
+  end
+
+  it 'should fix the unknown transactions to plugin failure' do
+    [:AUTHORIZE, :CAPTURE, :REFUND].each do |type|
+      payment_external_key = SecureRandom.uuid
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          :create_pending_payment => true,
+          :payment_processor_account_id => @payment_processor_account_id,
+          :auth_mode => true
+      )
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      kb_payment_id = validate_form_property(form, 'kb_payment_id')
+      kb_trx_id = validate_form_property(form, 'kb_transaction_id')
+      validate_token(form)
+
+      properties = @plugin.hash_to_properties({:skip_gw => true})
+      @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, kb_trx_id, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      nb_plugin_info = 1
+      if type == :CAPTURE
+        nb_plugin_info = 2
+        @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      elsif type == :REFUND
+        nb_plugin_info = 3
+        @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      end
+      verify_janitor_transition nb_plugin_info, type, :CANCELED, kb_payment_id
+    end
+  end
+
+  it 'should remain in unknown if cancellation period is not reached' do
+    [:AUTHORIZE, :CAPTURE, :REFUND].each do |type|
+      payment_external_key = SecureRandom.uuid
+      properties = @plugin.hash_to_properties(
+          :transaction_external_key => payment_external_key,
+          :create_pending_payment => true,
+          :payment_processor_account_id => @payment_processor_account_id,
+          :auth_mode => true
+      )
+      form = @plugin.build_form_descriptor(@pm.kb_account_id, @form_fields, properties, @call_context)
+      kb_payment_id = validate_form_property(form, 'kb_payment_id')
+      kb_trx_id = validate_form_property(form, 'kb_transaction_id')
+      validate_token(form)
+
+      properties = @plugin.hash_to_properties({:skip_gw => true})
+      @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, kb_trx_id, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      nb_plugin_info = 1
+      if type == :CAPTURE
+        nb_plugin_info = 2
+        @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      elsif type == :REFUND
+        nb_plugin_info = 3
+        @plugin.capture_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+        @plugin.refund_payment(@pm.kb_account_id, kb_payment_id, SecureRandom.uuid, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
+      end
+      verify_janitor_transition nb_plugin_info, type, :UNDEFINED, kb_payment_id, true, 3600*3
+    end
   end
 end
 
