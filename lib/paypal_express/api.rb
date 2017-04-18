@@ -86,8 +86,8 @@ module Killbill #:nodoc:
 
       def get_payment_info(kb_account_id, kb_payment_id, properties, context)
         filtered_plugin_info, plugin_info, with_only_pending_trx = get_raw_payment_info(kb_payment_id, context)
-        # Should never happen...
-        return [] if filtered_plugin_info.nil?
+
+        return filtered_plugin_info if filtered_plugin_info.empty?
 
         options = properties_to_hash(properties)
         # We won't be in a state where we have both a pending and unknown plugin infos; so we just return here.

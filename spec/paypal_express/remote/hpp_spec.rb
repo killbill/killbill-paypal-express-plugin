@@ -13,6 +13,11 @@ shared_examples 'hpp_spec_common' do
     @plugin.kb_apis.proxied_services[:payment_api].delete_all_payments
   end
 
+  it 'should return an empty list of plugin info if payment does not exist' do
+    payment_plugin_info = @plugin.get_payment_info(@pm.kb_account_id, SecureRandom.uuid, [], @call_context)
+    payment_plugin_info.size.should == 0
+  end
+
   it 'should generate forms correctly' do
     ::Killbill::PaypalExpress::PaypalExpressTransaction.count.should == 0
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
