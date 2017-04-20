@@ -93,7 +93,7 @@ module Killbill #:nodoc:
                 :kb_payment_id => transaction_plugin_info.kb_payment_id,
                 :kb_payment_transaction_id => transaction_plugin_info.kb_transaction_payment_id).update_all( :success => false,
                                                                                                              :updated_at => Time.now.utc,
-                                                                                                             :message => { :payment_plugin_status => :CANCELED, :exception_message => 'Token expired. Payment Canceled by Janitor.' }.to_json)
+                                                                                                             :message => { :payment_plugin_status => :ERROR, :exception_message => 'Token expired. Payment Canceled by Janitor.' }.to_json)
       end
 
       def gateway_error_code
