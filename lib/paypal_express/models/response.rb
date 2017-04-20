@@ -198,7 +198,11 @@ module Killbill #:nodoc:
         # Update the response row
         update!(updated_attributes)
 
-        amount_in_cents = amount.nil? ? nil : ::Monetize.from_numeric(amount.to_f, currency).cents.to_i
+        amount_in_cents = nil
+        unless amount.nil?
+          amount_in_cents = Monetize.from_numeric(amount.to_f, currency).cents.to_i
+          amount_in_cents = -amount_in_cents if amount_in_cents < 0
+        end
         # Create the transaction row if needed (cannot have been created before or the state wouldn't have been UNDEFINED)
         build_paypal_express_transaction(:kb_account_id => kb_account_id,
                                          :kb_tenant_id => kb_tenant_id,

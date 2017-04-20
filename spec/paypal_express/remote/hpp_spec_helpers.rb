@@ -346,8 +346,8 @@ module Killbill
         transaction_info_plugins.last.status.should eq(trx_status)
         transaction_info_plugins.last.transaction_type.should eq(trx_type)
         if trx_status == :PROCESSED
-          transaction_info_plugins.last.amount = @amount
-          transaction_info_plugins.last.currency = @currency
+          transaction_info_plugins.last.amount.should == @amount
+          transaction_info_plugins.last.currency.should == @currency
         end
       end
 
