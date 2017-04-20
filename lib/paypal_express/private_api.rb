@@ -49,17 +49,15 @@ module Killbill #:nodoc:
         kb_account_ids.map {|id| kb_apis.account_user_api.get_account_by_id(id, context).external_key }
       end
 
-      def fix_unknown_transaction(plugin_response, trx_plugin_info, gateway, kb_account_id, kb_tenant_id)
-        status, transaction_id, type = search_transaction(trx_plugin_info.created_date - ONE_HOUR_AGO,
-                                                          trx_plugin_info.amount,
-                                                          trx_plugin_info.currency,
-                                                          gateway,
-                                                          trx_plugin_info.kb_transaction_payment_id)
+      def fix_unknown_transaction(plugin_response, trx_plugin_info, gateway)
+        status, transaction_id, type, amount, currency = search_transaction(trx_plugin_info.created_date - ONE_HOUR_AGO,
+                                                                            gateway,
+                                                                            trx_plugin_info.kb_transaction_payment_id)
         return false if status.blank? || transaction_id.blank? || type.blank?
 
         if type == STATUS[trx_plugin_info.transaction_type][:type] &&
            status == STATUS[trx_plugin_info.transaction_type][:success_status]
-          plugin_response.transition_to_success transaction_id, trx_plugin_info
+          plugin_response.transition_to_success transaction_id, amount, currency
           logger.info("Fixed UNDEFINED kb_transaction_id='#{trx_plugin_info.kb_transaction_payment_id}' to PROCESSED")
           return true
         end
@@ -67,10 +65,10 @@ module Killbill #:nodoc:
         false
       end
 
-      def search_transaction(start_time, amount, currency, gateway, kb_payment_transaction_id)
-        options = {:start_date => start_time, :invoice_id => kb_payment_transaction_id, :amount => amount, :currency => currency}
+      def search_transaction(start_time, gateway, kb_payment_transaction_id)
+        options = {:start_date => start_time, :invoice_id => kb_payment_transaction_id}
         response = gateway.transaction_search options
-        [response.params['status'], response.authorization, response.params['type']]
+        [response.params['status'], response.authorization, response.params['type'], response.params['gross_amount'], response.params['gross_amount_currency_id']]
       end
     end
   end
