@@ -201,6 +201,7 @@ module Killbill #:nodoc:
         amount_in_cents = nil
         unless amount.nil?
           amount_in_cents = Monetize.from_numeric(amount.to_f, currency).cents.to_i
+          # Paypal search api returns a negative amount in case of successful refund
           amount_in_cents = -amount_in_cents if amount_in_cents < 0
         end
         # Create the transaction row if needed (cannot have been created before or the state wouldn't have been UNDEFINED)
