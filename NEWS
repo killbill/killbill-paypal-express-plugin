@@ -1,3 +1,9 @@
+5.0.5
+    Remove dependency on git
+
+5.0.4
+    Add Janitor fix logic
+
 5.0.3
     Fix for https://github.com/killbill/killbill-paypal-express-plugin/issues/26
 
