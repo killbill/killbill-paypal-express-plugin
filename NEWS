@@ -1,3 +1,6 @@
+5.0.6
+    Retrieve PayerInfo using token only for one-off payments
+
 5.0.5
     Remove dependency on git
 
