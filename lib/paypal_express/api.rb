@@ -371,7 +371,7 @@ module Killbill #:nodoc:
           add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
 
           # We have a baid on file
-          if options[:token]
+          if options[:reference_id]
             if is_authorize
               gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 # Can't use default implementation: the purchase signature is for one-off payments only
@@ -386,6 +386,38 @@ module Killbill #:nodoc:
           else
             # One-off payment
             options[:token] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token) || find_last_token(kb_account_id, context.tenant_id)
+
+            # Retrieve payer_id and payer_email
+            begin
+              payer_info = get_payer_info(options[:token],
+                                          kb_account_id,
+                                          context.tenant_id,
+                                          payment_processor_account_id,
+                                          kb_payment_id,
+                                          kb_payment_transaction_id,
+                                          transaction_type)
+            rescue => e
+              # Maybe invalid token?
+              response = @response_model.create(:api_call                     => api_call_type,
+                                                :kb_account_id                => kb_account_id,
+                                                :kb_payment_id                => kb_payment_id,
+                                                :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                                :transaction_type             => transaction_type,
+                                                :authorization                => nil,
+                                                :payment_processor_account_id => payment_processor_account_id,
+                                                :kb_tenant_id                 => context.tenant_id,
+                                                :success                      => false,
+                                                :created_at                   => Time.now.utc,
+                                                :updated_at                   => Time.now.utc,
+                                                :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
+              return response.to_transaction_info_plugin(nil)
+            end
+            options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
+            if options[:payer_id].nil?
+              options[:payer_id] = payer_info.payer_id
+            end
+            options[:payer_email] = payer_info.payer_email
+
             if is_authorize
               gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 gateway.authorize(amount_in_cents, options)
@@ -400,36 +432,6 @@ module Killbill #:nodoc:
           # Find the payment_processor_id if not provided
           payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
           options[:payment_processor_account_id] = payment_processor_account_id
-
-          begin
-            payer_info = get_payer_info(options[:token],
-                                        kb_account_id,
-                                        context.tenant_id,
-                                        payment_processor_account_id,
-                                        kb_payment_id,
-                                        kb_payment_transaction_id,
-                                        transaction_type)
-          rescue => e
-            # Maybe invalid token?
-            response = @response_model.create(:api_call                     => api_call_type,
-                                              :kb_account_id                => kb_account_id,
-                                              :kb_payment_id                => kb_payment_id,
-                                              :kb_payment_transaction_id    => kb_payment_transaction_id,
-                                              :transaction_type             => transaction_type,
-                                              :authorization                => nil,
-                                              :payment_processor_account_id => payment_processor_account_id,
-                                              :kb_tenant_id                 => context.tenant_id,
-                                              :success                      => false,
-                                              :created_at                   => Time.now.utc,
-                                              :updated_at                   => Time.now.utc,
-                                              :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
-            return response.to_transaction_info_plugin(nil)
-          end
-          options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
-          if options[:payer_id].nil?
-            options[:payer_id] = payer_info.payer_id
-          end
-          options[:payer_email] = payer_info.payer_email
 
           properties = merge_properties(properties, options)
           dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc, nil, {:payer_id => options[:payer_id]})

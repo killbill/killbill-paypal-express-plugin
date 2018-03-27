@@ -21,7 +21,6 @@ shared_examples 'baid_spec_common' do
     payer_id = find_value_from_properties(payment_response.properties, 'payerId')
     payer_id.should_not be_nil
 
-    validate_details_for(@kb_payment.id, :PURCHASE, payer_id)
     # Verify GET API
     payment_infos = @plugin.get_payment_info(@pm.kb_account_id, @kb_payment.id, [], @call_context)
     payment_infos.size.should == 1
@@ -73,7 +72,6 @@ shared_examples 'baid_spec_common' do
     payer_id = find_value_from_properties(payment_response.properties, 'payerId')
     payer_id.should_not be_nil
 
-    validate_details_for(@kb_payment.id, :AUTHORIZE, payer_id)
     # Verify GET API
     payment_infos = @plugin.get_payment_info(@pm.kb_account_id, @kb_payment.id, [], @call_context)
     payment_infos.size.should == 1
@@ -154,7 +152,6 @@ shared_examples 'baid_spec_common' do
     payer_id = find_value_from_properties(payment_response.properties, 'payerId')
     payer_id.should_not be_nil
 
-    validate_details_for(@kb_payment.id, :AUTHORIZE, payer_id)
     # Verify GET API
     payment_infos = @plugin.get_payment_info(@pm.kb_account_id, @kb_payment.id, [], @call_context)
     payment_infos.size.should == 1
@@ -203,7 +200,6 @@ shared_examples 'baid_spec_common' do
     payer_id = find_value_from_properties(payment_response.properties, 'payerId')
     payer_id.should_not be_nil
 
-    validate_details_for(@kb_payment.id, :AUTHORIZE, payer_id)
     # Verify GET API
     payment_infos = @plugin.get_payment_info(@pm.kb_account_id, @kb_payment.id, [], @call_context)
     payment_infos.size.should == 1
