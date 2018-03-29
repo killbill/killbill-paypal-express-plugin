@@ -97,7 +97,7 @@ shared_examples 'hpp_spec_common' do
       payment_infos[0].currency.should be_nil
       payment_infos[0].status.should == :PENDING
       payment_infos[0].gateway_error.should == {:payment_plugin_status => 'PENDING',
-                                                :token_expiration_period => @plugin.class.const_get(:THREE_HOURS_AGO).to_s}.to_json
+                                                :token_expiration_period => @plugin.class.const_get(:PENDING_TRX_CANCEL_PERIOD).to_s}.to_json
       payment_infos[0].gateway_error_code.should be_nil
 
       properties = []
@@ -162,7 +162,7 @@ shared_examples 'hpp_spec_common' do
         payment_infos[0].currency.should be_nil
         payment_infos[0].status.should == :PENDING
         payment_infos[0].gateway_error.should == {:payment_plugin_status => 'PENDING',
-                                                  :token_expiration_period => @plugin.class.const_get(:THREE_HOURS_AGO).to_s}.to_json
+                                                  :token_expiration_period => @plugin.class.const_get(:PENDING_TRX_CANCEL_PERIOD).to_s}.to_json
         payment_infos[0].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[0].properties, :payment_processor_account_id).should == @payment_processor_account_id
       else
@@ -343,7 +343,7 @@ shared_examples 'hpp_spec_common' do
     ::Killbill::PaypalExpress::PaypalExpressResponse.count.should == 0
 
     expiration_period = 5
-    @plugin.class.const_set(:THREE_HOURS_AGO, expiration_period)
+    @plugin.class.const_set(:PENDING_TRX_CANCEL_PERIOD, expiration_period)
     payment_external_key = SecureRandom.uuid
     properties = @plugin.hash_to_properties(
         :transaction_external_key => payment_external_key,

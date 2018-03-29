@@ -176,7 +176,7 @@ module Killbill #:nodoc:
         update!(updated_attributes)
       end
 
-      def transition_to_success(transaction_id, trx_plugin_info)
+      def transition_to_success(transaction_id, amount, currency)
         begin
           new_message = JSON.parse(message)
           original_message = nil
@@ -198,11 +198,17 @@ module Killbill #:nodoc:
         # Update the response row
         update!(updated_attributes)
 
+        amount_in_cents = nil
+        unless amount.nil?
+          amount_in_cents = Monetize.from_numeric(amount.to_f, currency).cents.to_i
+          # Paypal search api returns a negative amount in case of successful refund
+          amount_in_cents = -amount_in_cents if amount_in_cents < 0
+        end
         # Create the transaction row if needed (cannot have been created before or the state wouldn't have been UNDEFINED)
         build_paypal_express_transaction(:kb_account_id => kb_account_id,
                                          :kb_tenant_id => kb_tenant_id,
-                                         :amount_in_cents => trx_plugin_info.amount,
-                                         :currency => trx_plugin_info.currency,
+                                         :amount_in_cents => amount_in_cents,
+                                         :currency => currency,
                                          :api_call => api_call,
                                          :kb_payment_id => kb_payment_id,
                                          :kb_payment_transaction_id => kb_payment_transaction_id,

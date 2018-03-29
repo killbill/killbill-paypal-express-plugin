@@ -2,8 +2,9 @@ module Killbill #:nodoc:
   module PaypalExpress #:nodoc:
     class PaymentPlugin < ::Killbill::Plugin::ActiveMerchant::PaymentPlugin
 
-      THREE_HOURS_AGO = (3*3600)
-      FIVE_MINUTES_AGO = 300
+      UNKNOWN_TRX_CANCEL_PERIOD = 3600
+      PENDING_TRX_CANCEL_PERIOD = (3*3600)
+      UNKNOWN_TRX_DELAY_FIX_PERIOD = 300
 
       def initialize
         gateway_builder = Proc.new do |config|
@@ -348,7 +349,7 @@ module Killbill #:nodoc:
         if ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :from_hpp)
           token = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token)
           message = {:payment_plugin_status => :PENDING,
-                     :token_expiration_period => ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token_expiration_period) || THREE_HOURS_AGO.to_s}
+                     :token_expiration_period => ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token_expiration_period) || PENDING_TRX_CANCEL_PERIOD.to_s}
           response = @response_model.create(:api_call                     => :build_form_descriptor,
                                             :kb_account_id                => kb_account_id,
                                             :kb_payment_id                => kb_payment_id,
@@ -446,9 +447,9 @@ module Killbill #:nodoc:
         response = PaypalExpressResponse.find_by(:id => paypal_response_id)
         begin
           message_details = JSON.parse response.message
-          expiration_period = (message_details['token_expiration_period'] || THREE_HOURS_AGO).to_i
+          expiration_period = (message_details['token_expiration_period'] || PENDING_TRX_CANCEL_PERIOD).to_i
         rescue
-          expiration_period = THREE_HOURS_AGO.to_i
+          expiration_period = PENDING_TRX_CANCEL_PERIOD.to_i
         end
         now = Time.parse(@clock.get_clock.get_utc_now.to_s)
         (now - transaction_plugin_info.created_date) >= expiration_period
@@ -574,7 +575,7 @@ module Killbill #:nodoc:
           delay_since_transaction = 0 if delay_since_transaction < 0
 
           # Do nothing before the delayed checking time
-          janitor_delay_threshold = (Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :janitor_delay_threshold) || FIVE_MINUTES_AGO).to_i
+          janitor_delay_threshold = (Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :janitor_delay_threshold) || UNKNOWN_TRX_DELAY_FIX_PERIOD).to_i
           next unless delay_since_transaction >= janitor_delay_threshold
 
           paypal_response_id = find_value_from_properties(unknown_trx_info.properties, 'paypalExpressResponseId')
@@ -587,7 +588,7 @@ module Killbill #:nodoc:
           fixed = false
           begin
             gateway  = lookup_gateway(payment_processor_account_id, context.tenant_id)
-            fixed    = @private_api.fix_unknown_transaction(response, unknown_trx_info, gateway, kb_account_id, context.tenant_id)
+            fixed    = @private_api.fix_unknown_transaction(response, unknown_trx_info, gateway)
             logger.info("Unable to fix UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}' (not found in PayPal)") unless fixed
           rescue => e
             logger.warn("Unable to fix UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}': #{e.message}\n#{e.backtrace.join("\n")}")
@@ -595,7 +596,7 @@ module Killbill #:nodoc:
 
           if !fixed
             # hard expiration limit
-            janitor_cancellation_threshold = (Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :cancel_threshold) || THREE_HOURS_AGO).to_i
+            janitor_cancellation_threshold = (Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :cancel_threshold) || UNKNOWN_TRX_CANCEL_PERIOD).to_i
             if delay_since_transaction >= janitor_cancellation_threshold
               response.transition_to_plugin_failure
               logger.info("Expire UNDEFINED kb_transaction_id='#{unknown_trx_info.kb_transaction_payment_id}' to CANCELED")
