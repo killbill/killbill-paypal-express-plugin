@@ -44,6 +44,25 @@ describe Killbill::PaypalExpress::PaypalExpressResponse do
     expect(response.gateway_error_code).to be_nil
   end
 
+
+  it 'should avoid persisting sensitive fields' do
+    action = "GetExpressCheckoutDetails"
+    response = ::Killbill::PaypalExpress::PaypalExpressResponse.from_response(
+        action,         # api_call
+        "account1",     # kb_account_id
+        "payment1",     # kb_payment_id
+        nil,            # kb_payment_transaction_id
+        nil,            # transaction_type
+        "account2",     # payment_processor_account_id
+        "tenant1",      # kb_tenant_id
+        load_paypal_response(action, "success")
+    )
+    expect(response.payer_email).to be_nil
+    expect(response.payer_name).to be_nil
+    expect(response.ship_to_address_address1).to be_nil
+    expect(response.payer_id).to eq('MY_PAYER_ID')
+  end
+
   it 'should read a DoExpressCheckoutPayment response with an error code correctly' do
     action = "DoExpressCheckoutPayment"
     response = ::Killbill::PaypalExpress::PaypalExpressResponse.from_response(
