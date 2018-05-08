@@ -5,7 +5,7 @@ defaults: &defaults
 
 version: 2
 jobs:
-  build-jruby-1.7.26:
+  build:
     <<: *defaults
     docker:
       - image: killbill/kbbuild:0.5.0
