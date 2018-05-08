@@ -1,0 +1,43 @@
+defaults: &defaults
+  working_directory: ~/repo
+  environment:
+    JRUBY_OPTS: -J-Xmx1024M
+
+version: 2
+jobs:
+  build-jruby-1.7.26:
+    <<: *defaults
+    docker:
+      - image: killbill/kbbuild:0.5.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-dependencies-jruby-1.7.26-{{ .Branch }}-{{ checksum "Gemfile.lock" }}-{{ checksum "pom.xml" }}
+      - run:
+          name: Install gem dependencies
+          command: |
+            bundle install --jobs=4 --retry=3 --path=vendor/bundle
+            bundle exec jbundle install
+      - save_cache:
+          paths:
+            - ~/.m2
+            - .bundle
+            - .jbundler
+            - vendor/bundle
+          key: v1-dependencies-jruby-1.7.26-{{ .Branch }}-{{ checksum "Gemfile.lock" }}-{{ checksum "pom.xml" }}
+      - run:
+          name: Run tests
+          command: |
+            mkdir /tmp/test-results
+            bundle exec rspec --format documentation \
+                              --out /tmp/test-results/rspec.txt \
+                              $(circleci tests glob "spec/*/*_spec.rb")
+            if [ "${SIGNATURE}" != "" ]; then
+              bundle exec rake test:remote:spec | tee /tmp/test-results/remote-test.txt 2>&1
+            fi
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: test-results
+
