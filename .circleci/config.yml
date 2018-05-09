@@ -15,8 +15,9 @@ jobs:
       - restore_cache:
           key: v1-dependencies-jruby-1.7.26-{{ .Branch }}-{{ checksum "Gemfile.lock" }}-{{ checksum "pom.xml" }}
       - run:
-          name: Install gem dependencies
+          name: Install dependencies
           command: |
+            sudo apt-get install -y xvfb firefox
             bundle install --jobs=4 --retry=3 --path=vendor/bundle
             bundle exec jbundle install
       - save_cache:
