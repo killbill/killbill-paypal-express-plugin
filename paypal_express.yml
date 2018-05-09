@@ -1,7 +1,7 @@
 :paypal_express:
-  :signature: <%= ENV['SIGNATURE'] %>
-  :login: <%= ENV['LOGIN'] %>
-  :password: <%= ENV['PASSWORD'] %>
+  :signature: "<%= ENV['SIGNATURE'] %>"
+  :login: "<%= ENV['LOGIN'] %>"
+  :password: "<%= ENV['PASSWORD'] %>"
   :test: true
 
 :database:

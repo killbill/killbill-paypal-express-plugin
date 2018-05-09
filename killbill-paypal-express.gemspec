@@ -38,7 +38,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'money', '~> 6.5.1'
 
   s.add_development_dependency 'jbundler', '~> 0.9.2'
-  s.add_development_dependency 'rake', '>= 10.0.0'
+  s.add_development_dependency 'rake', '>= 10.0.0', '< 11.0.0'
   s.add_development_dependency 'rspec', '~> 2.12.0'
   s.add_development_dependency 'selenium-webdriver', '~>2.53.0'
   if defined?(JRUBY_VERSION)
