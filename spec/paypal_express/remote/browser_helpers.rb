@@ -8,7 +8,11 @@ module Killbill
           print "\nPlease go to #{url} to proceed and press any key to continue... Note: you need to log-in with a paypal sandbox account (create one here: https://developer.paypal.com/webapps/developer/applications/accounts)\n"
           $stdin.gets
         else
-          driver = Selenium::WebDriver.for :firefox
+          if ENV['SELENIUM_URL'].blank?
+            driver = Selenium::WebDriver.for :firefox
+          else
+            driver = Selenium::WebDriver.for :remote, :url => ENV['SELENIUM_URL'], :desired_capabilities => :firefox
+          end
           # Login page
           driver.get url
 
