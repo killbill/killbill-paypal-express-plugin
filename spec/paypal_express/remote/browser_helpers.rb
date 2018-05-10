@@ -68,7 +68,7 @@ module Killbill
                 next_element = driver.find_element(:id, 'btnNext') rescue nil
                 ready?(next_element) ? next_element : false
               }
-            rescue Error::TimeOutError
+            rescue Selenium::WebDriver::Error::TimeOutError
               # Ignore - in the new version, password is not always on a separate page
               sandbox_ui_version = 4
             end
