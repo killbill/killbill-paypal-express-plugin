@@ -28,7 +28,7 @@ def validate_details_for(kb_payment_id, transaction_type, payer_id)
   details_for.message.should == "Success"
   details_for.transaction_type.to_sym.should == transaction_type.to_sym
   details_for.payer_id.should == payer_id
-  details_for.payer_name.should_not be_nil
+  details_for.payer_name.should be_nil
 end
 
 
