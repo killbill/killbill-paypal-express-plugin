@@ -3,7 +3,6 @@ defaults: &defaults
   environment:
     JRUBY_OPTS: -J-Xmx1024M
     SELENIUM_URL: http://127.0.0.1:4444/wd/hub
-    SELENIUM_DEBUG: true
 
 version: 2
 jobs:
@@ -37,7 +36,8 @@ jobs:
                               --out /tmp/test-results/rspec.txt \
                               $(circleci tests glob "spec/*/*_spec.rb")
             if [ "${SIGNATURE}" != "" ]; then
-              bundle exec rake test:remote:spec | tee /tmp/test-results/remote-test.txt 2>&1
+              /var/lib/jruby/bin/jruby -S rspec ./spec/paypal_express/remote/baid_spec.rb | tee /tmp/test-results/baid_spec.txt 2>&1
+              /var/lib/jruby/bin/jruby -S rspec ./spec/paypal_express/remote/hpp_spec.rb | tee /tmp/test-results/hpp_spec.txt 2>&1
             fi
       - store_test_results:
           path: /tmp/test-results
