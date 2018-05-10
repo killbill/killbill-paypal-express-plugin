@@ -96,6 +96,21 @@ module Killbill #:nodoc:
                                                                                                              :message => { :payment_plugin_status => :CANCELED, :exception_message => 'Token expired. Payment Canceled by Janitor.' }.to_json)
       end
 
+      def self.sensitive_fields
+        [:payer_name,
+         :payer_email,
+         :contact_phone,
+         :ship_to_address_name,
+         :ship_to_address_company,
+         :ship_to_address_address1,
+         :ship_to_address_address2,
+         :ship_to_address_city,
+         :ship_to_address_state,
+         :ship_to_address_country,
+         :ship_to_address_zip,
+         :ship_to_address_phone]
+      end
+
       def gateway_error_code
         payment_info_reasoncode
       end
