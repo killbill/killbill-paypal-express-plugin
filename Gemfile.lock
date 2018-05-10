@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    killbill-paypal-express (5.0.7)
+    killbill-paypal-express (5.0.8)
       actionpack (~> 4.1.0)
       actionview (~> 4.1.0)
       activemerchant (~> 1.53.0)
@@ -152,7 +152,7 @@ DEPENDENCIES
   jdbc-postgres (~> 9.4)
   jdbc-sqlite3 (~> 3.7)
   killbill-paypal-express!
-  rake (>= 10.0.0)
+  rake (>= 10.0.0, < 11.0.0)
   rspec (~> 2.12.0)
   selenium-webdriver (~> 2.53.0)
 

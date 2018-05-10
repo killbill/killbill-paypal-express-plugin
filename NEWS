@@ -1,3 +1,7 @@
+5.0.8
+    Don't persist sensitive data (GDPR)
+    CircleCI integration
+
 5.0.7
     Populate amount and currency in successful janitor fixes
 
