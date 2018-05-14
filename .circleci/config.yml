@@ -18,6 +18,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
+            sudo apt-get update
             sudo apt-get install -y xvfb firefox
             bundle install --jobs=4 --retry=3 --path=vendor/bundle
             bundle exec jbundle install
