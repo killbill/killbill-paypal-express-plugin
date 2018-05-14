@@ -100,7 +100,7 @@ workflows:
       - build
       - baid_spec:
           requires:
-            - build-and-test
+            - build
       - hpp_spec:
           requires:
-            - build-and-test
+            - build
