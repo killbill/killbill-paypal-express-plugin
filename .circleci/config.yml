@@ -6,7 +6,7 @@ defaults: &defaults
 
 version: 2
 jobs:
-  build-and-test:
+  build:
     <<: *defaults
     docker:
       - image: killbill/kbbuild:0.5.0
@@ -97,10 +97,10 @@ workflows:
   version: 2
   build-and-test:
     jobs:
-      - build-and-test
-      - baid_spec
+      - build
+      - baid_spec:
           requires:
             - build-and-test
-      - hpp_spec
+      - hpp_spec:
           requires:
             - build-and-test
