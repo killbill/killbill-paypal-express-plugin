@@ -1,3 +1,6 @@
+5.0.9
+    Regression bugfix in HPP path
+
 5.0.8
     Don't persist sensitive data (GDPR)
     CircleCI integration
