@@ -369,6 +369,10 @@ module Killbill #:nodoc:
         else
           options = {}
           add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+          options[:token] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token) || find_last_token(kb_account_id, context.tenant_id)
+          # Find the payment_processor_id if not provided
+          payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
+          options[:payment_processor_account_id] = payment_processor_account_id
 
           # We have a baid on file
           if options[:reference_id]
@@ -385,8 +389,6 @@ module Killbill #:nodoc:
             end
           else
             # One-off payment
-            options[:token] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token) || find_last_token(kb_account_id, context.tenant_id)
-
             # Retrieve payer_id and payer_email
             begin
               payer_info = get_payer_info(options[:token],
@@ -428,10 +430,6 @@ module Killbill #:nodoc:
               end
             end
           end
-
-          # Find the payment_processor_id if not provided
-          payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
-          options[:payment_processor_account_id] = payment_processor_account_id
 
           properties = merge_properties(properties, options)
           dispatch_to_gateways(api_call_type, kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, gateway_call_proc, nil, {:payer_id => options[:payer_id]})
@@ -561,6 +559,8 @@ module Killbill #:nodoc:
       def fix_unknown_transactions(payment_id, trx_plugin_info, options, kb_account_id, context)
         unknown_transactions_info = trx_plugin_info.find_all { |t_info_plugin| t_info_plugin.status == :UNDEFINED }
         now = Time.parse(@clock.get_clock.get_utc_now.to_s)
+
+        return false if unknown_transactions_info.empty?
 
         token = trx_plugin_info.map {|plugin_info| find_value_from_properties(plugin_info.properties, 'authorization')}.find {|token| !token.blank?}
         if token.nil?

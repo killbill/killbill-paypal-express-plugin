@@ -58,6 +58,19 @@ module Killbill
             pwd_element.send_keys(ENV['BUYER_PASSWORD'])
             login_element.click
           else
+            begin
+              pre_login = wait.until {
+                pre_login = driver.find_elements(:tag_name, 'a').select {|link| link.text == 'Log In'}.first rescue nil
+                ready?(pre_login) ? pre_login : false
+              }
+            rescue Selenium::WebDriver::Error::TimeOutError
+              sandbox_ui_version = 4
+            end
+
+            pre_login.click unless pre_login.nil?
+
+            sleep 2
+
             email_element = wait.until {
               email_element = driver.find_element(:id, 'email') rescue nil
               ready?(email_element) ? email_element : false
@@ -70,7 +83,7 @@ module Killbill
               }
             rescue Selenium::WebDriver::Error::TimeOutError
               # Ignore - in the new version, password is not always on a separate page
-              sandbox_ui_version = 4
+              sandbox_ui_version = 5
             end
 
             email_element.send_keys(ENV['BUYER_USERNAME'])
