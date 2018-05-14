@@ -86,7 +86,7 @@ module Killbill
               sandbox_ui_version = 5
             end
 
-            email_element.send_keys(ENV['BUYER_USERNAME'])
+            driver.find_element(:id, 'email').send_keys(ENV['BUYER_USERNAME'])
 
             next_element.click unless next_element.nil?
 
