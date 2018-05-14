@@ -1,7 +1,7 @@
 defaults: &defaults
   working_directory: ~/repo
   environment:
-    JRUBY_OPTS: -J-Xmx1024M
+    JRUBY_OPTS: -J-Xmx768M
     SELENIUM_URL: http://127.0.0.1:4444/wd/hub
 
 version: 2
