@@ -6,11 +6,10 @@ defaults: &defaults
 
 version: 2
 jobs:
-  build:
+  build-and-test:
     <<: *defaults
     docker:
       - image: killbill/kbbuild:0.5.0
-      - image: selenium/standalone-firefox:3.1.0
     steps:
       - checkout
       - restore_cache:
@@ -18,8 +17,6 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            sudo apt-get update
-            sudo apt-get install -y xvfb firefox
             bundle install --jobs=4 --retry=3 --path=vendor/bundle
             bundle exec jbundle install
       - save_cache:
@@ -36,8 +33,58 @@ jobs:
             bundle exec rspec --format documentation \
                               --out /tmp/test-results/rspec.txt \
                               $(circleci tests glob "spec/*/*_spec.rb")
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: test-results
+
+  baid_spec:
+    <<: *defaults
+    docker:
+      - image: killbill/kbbuild:0.5.0
+      - image: selenium/standalone-firefox:3.1.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-dependencies-jruby-1.7.26-{{ .Branch }}-{{ checksum "Gemfile.lock" }}-{{ checksum "pom.xml" }}
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y xvfb firefox
+      - run:
+          name: Run tests
+          command: |
+            mkdir /tmp/test-results
             if [ "${SIGNATURE}" != "" ]; then
               bundle exec jruby -S rspec ./spec/paypal_express/remote/baid_spec.rb | tee /tmp/test-results/baid_spec.txt 2>&1
+            fi
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: test-results
+
+  hpp_spec:
+    <<: *defaults
+    docker:
+      - image: killbill/kbbuild:0.5.0
+      - image: selenium/standalone-firefox:3.1.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-dependencies-jruby-1.7.26-{{ .Branch }}-{{ checksum "Gemfile.lock" }}-{{ checksum "pom.xml" }}
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y xvfb firefox
+      - run:
+          name: Run tests
+          command: |
+            mkdir /tmp/test-results
+            if [ "${SIGNATURE}" != "" ]; then
               bundle exec jruby -S rspec ./spec/paypal_express/remote/hpp_spec.rb | tee /tmp/test-results/hpp_spec.txt 2>&1
             fi
       - store_test_results:
@@ -46,3 +93,14 @@ jobs:
           path: /tmp/test-results
           destination: test-results
 
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build-and-test
+      - baid_spec
+          requires:
+            - build-and-test
+      - hpp_spec
+          requires:
+            - build-and-test
