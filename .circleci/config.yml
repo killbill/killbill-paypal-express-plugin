@@ -66,7 +66,7 @@ jobs:
           path: /tmp/test-results
           destination: test-results
 
-  hpp_spec:
+  hpp_spec-single_account:
     <<: *defaults
     docker:
       - image: killbill/kbbuild:0.5.0
@@ -85,7 +85,34 @@ jobs:
           command: |
             mkdir /tmp/test-results
             if [ "${SIGNATURE}" != "" ]; then
-              bundle exec jruby -S rspec ./spec/paypal_express/remote/hpp_spec.rb | tee /tmp/test-results/hpp_spec.txt 2>&1
+              bundle exec jruby -S rspec ./spec/paypal_express/remote/hpp_spec.rb --tag single_account | tee /tmp/test-results/hpp_spec_single_account.txt 2>&1
+            fi
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: test-results
+
+  hpp_spec-multiple_accounts:
+    <<: *defaults
+    docker:
+      - image: killbill/kbbuild:0.5.0
+      - image: selenium/standalone-firefox:3.1.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1-dependencies-jruby-1.7.26-{{ .Branch }}-{{ checksum "Gemfile.lock" }}-{{ checksum "pom.xml" }}
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y xvfb firefox
+      - run:
+          name: Run tests
+          command: |
+            mkdir /tmp/test-results
+            if [ "${SIGNATURE}" != "" ]; then
+              bundle exec jruby -S rspec ./spec/paypal_express/remote/hpp_spec.rb --tag multiple_accounts | tee /tmp/test-results/hpp_spec_multiple_accounts.txt 2>&1
             fi
       - store_test_results:
           path: /tmp/test-results
@@ -101,6 +128,9 @@ workflows:
       - baid_spec:
           requires:
             - build
-      - hpp_spec:
+      - hpp_spec-single_account:
+          requires:
+            - build
+      - hpp_spec-multiple_accounts:
           requires:
             - build
