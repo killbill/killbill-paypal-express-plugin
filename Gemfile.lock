@@ -146,7 +146,7 @@ GEM
       coercible (~> 1.0)
       descendants_tracker (~> 0.0, >= 0.0.3)
       equalizer (~> 0.0, >= 0.0.9)
-    websocket (1.2.8)
+    websocket (1.2.4)
 
 PLATFORMS
   java
@@ -160,6 +160,7 @@ DEPENDENCIES
   rake (>= 10.0.0, < 11.0.0)
   rspec (~> 3.5.0)
   selenium-webdriver (~> 2.53.0)
+  websocket (~> 1.2, <= 1.2.4)
 
 BUNDLED WITH
    1.15.1
