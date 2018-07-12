@@ -7,7 +7,7 @@ require 'logger'
 require 'rspec'
 
 RSpec.configure do |config|
-  config.color_enabled = true
+  config.color = true
   config.tty = true
   config.formatter = 'documentation'
 end
@@ -39,11 +39,11 @@ class PaypalExpressJavaPaymentApi < ::Killbill::Plugin::ActiveMerchant::RSpec::F
     @plugin = plugin
   end
 
-  def get_account_payment_methods(kb_account_id, plugin_info, properties, context)
+  def get_account_payment_methods(kb_account_id, included_inactive, with_plugin_info, properties, context)
     [OpenStruct.new(:plugin_name => 'killbill-paypal-express', :id => SecureRandom.uuid)]
   end
 
-  def create_purchase(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, payment_external_key, payment_transaction_external_key, properties, context)
+  def create_purchase(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, effective_date, payment_external_key, payment_transaction_external_key, properties, context)
     kb_payment = add_payment(kb_payment_id || SecureRandom.uuid, SecureRandom.uuid, payment_transaction_external_key, :PURCHASE)
 
     rcontext = context.to_ruby(context)
@@ -52,7 +52,7 @@ class PaypalExpressJavaPaymentApi < ::Killbill::Plugin::ActiveMerchant::RSpec::F
     kb_payment
   end
 
-  def create_authorization(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, payment_external_key, payment_transaction_external_key, properties, context)
+  def create_authorization(kb_account, kb_payment_method_id, kb_payment_id, amount, currency, effective_date, payment_external_key, payment_transaction_external_key, properties, context)
     kb_payment = add_payment(kb_payment_id || SecureRandom.uuid, SecureRandom.uuid, payment_transaction_external_key, :AUTHORIZE)
 
     rcontext = context.to_ruby(context)
