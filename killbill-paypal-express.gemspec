@@ -40,7 +40,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'jbundler', '~> 0.9.2'
   s.add_development_dependency 'rake', '>= 10.0.0', '< 11.0.0'
   s.add_development_dependency 'rspec', '~> 3.5.0'
-  s.add_development_dependency 'selenium-webdriver', '~>2.53.4'
+  s.add_development_dependency 'selenium-webdriver', '~>2.53.0'
   if defined?(JRUBY_VERSION)
     s.add_development_dependency 'jdbc-sqlite3', '~> 3.7'
     s.add_development_dependency 'jdbc-mariadb', '~> 1.1'
