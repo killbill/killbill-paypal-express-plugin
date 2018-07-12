@@ -11,8 +11,12 @@ module Killbill
           debug = !(ENV['SELENIUM_DEBUG'].blank?)
           $DEBUG = true if debug
 
-          if ENV['SELENIUM_URL'].blank?
+          # this option will work only with older browser <48
+          if ENV['SELENIUM_URL'].blank? && ENV['SELENIUM_STANDALONE_SERVER'].blank?
             driver = Selenium::WebDriver.for :firefox
+          # this options need the selenium standalone server to be running (https://www.seleniumhq.org/download/)
+          elsif !(ENV['SELENIUM_STANDALONE_SERVER'].blank?)
+            driver = Selenium::WebDriver.for :remote
           else
             driver = Selenium::WebDriver.for :remote, :url => ENV['SELENIUM_URL'], :desired_capabilities => :firefox
           end

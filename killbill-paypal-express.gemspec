@@ -28,7 +28,7 @@ Gem::Specification.new do |s|
   if defined?(JRUBY_VERSION)
     s.add_dependency 'activerecord-bogacs', '~> 0.3'
     s.add_dependency 'activerecord-jdbc-adapter', '~> 1.3', '< 1.5'
-    s.add_dependency 'jruby-openssl', '~> 0.10.0'
+    s.add_dependency 'jruby-openssl', '~> 0.9.11'
   end
   s.add_dependency 'actionpack', '~> 4.1.0'
   s.add_dependency 'actionview', '~> 4.1.0'
@@ -40,7 +40,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'jbundler', '~> 0.9.2'
   s.add_development_dependency 'rake', '>= 10.0.0', '< 11.0.0'
   s.add_development_dependency 'rspec', '~> 3.5.0'
-  s.add_development_dependency 'selenium-webdriver', '~>3.13.0'
+  s.add_development_dependency 'selenium-webdriver', '~>2.53.4'
   if defined?(JRUBY_VERSION)
     s.add_development_dependency 'jdbc-sqlite3', '~> 3.7'
     s.add_development_dependency 'jdbc-mariadb', '~> 1.1'
