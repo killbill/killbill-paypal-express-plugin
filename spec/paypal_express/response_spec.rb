@@ -6,8 +6,8 @@ describe Killbill::PaypalExpress::PaypalExpressResponse do
   def load_paypal_response(action, suffix)
     @spec_root ||= File.expand_path(File.join(File.dirname(__FILE__), ".."))
     xml = IO.read(File.join(@spec_root, "fixtures", action + "-" + suffix + ".xml"))
-    ActiveMerchant::Billing::PaypalGateway.any_instance.stub(:build_request).and_return(nil)
-    ActiveMerchant::Billing::PaypalGateway.any_instance.stub(:ssl_post).and_return(xml)
+    allow_any_instance_of(ActiveMerchant::Billing::PaypalGateway).to receive(:build_request).and_return(nil)
+    allow_any_instance_of(ActiveMerchant::Billing::PaypalGateway).to receive(:ssl_post).and_return(xml)
     api = ActiveMerchant::Billing::PaypalGateway.new(:login => "dummy", :password => "password", :signature => "dummy")
     api.send(:commit, action, nil)
   end

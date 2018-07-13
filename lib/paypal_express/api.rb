@@ -195,6 +195,7 @@ module Killbill #:nodoc:
 
         kb_account = ::Killbill::Plugin::ActiveMerchant::Utils::LazyEvaluator.new { @kb_apis.account_user_api.get_account_by_id(kb_account_id, jcontext) }
         amount = (options[:amount] || '0').to_f
+        effective_date = options[:effective_date] || Time.now.utc
         currency = options[:currency] || kb_account.currency
 
         response = initiate_express_checkout(kb_account_id, amount, currency, all_properties, context)
@@ -216,7 +217,7 @@ module Killbill #:nodoc:
           payment_external_key = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :payment_external_key)
           transaction_external_key = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :transaction_external_key)
 
-          kb_payment_method = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, [], jcontext).find { |pm| pm.plugin_name == 'killbill-paypal-express' })
+          kb_payment_method = (@kb_apis.payment_api.get_account_payment_methods(kb_account_id, false, false, [], jcontext).find { |pm| pm.plugin_name == 'killbill-paypal-express' })
 
           auth_mode = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(options, :auth_mode)
           # By default, the SALE mode is used.
@@ -227,6 +228,7 @@ module Killbill #:nodoc:
                                                 nil,
                                                 amount,
                                                 currency,
+                                                effective_date,
                                                 payment_external_key,
                                                 transaction_external_key,
                                                 custom_props,
@@ -238,6 +240,7 @@ module Killbill #:nodoc:
                                            nil,
                                            amount,
                                            currency,
+                                           effective_date,
                                            payment_external_key,
                                            transaction_external_key,
                                            custom_props,

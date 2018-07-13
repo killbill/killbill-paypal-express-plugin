@@ -37,19 +37,19 @@ module Killbill
 
       def create_token(kb_account_id, kb_tenant_id, options)
         response = @private_plugin.initiate_express_checkout(kb_account_id, kb_tenant_id, @amount, @currency, true, options)
-        response.success.should be_true
+        expect(response.success).to be_truthy
         response
       end
 
       def verify_payment_method(kb_account_id)
         # Verify our table directly. Note that @pm.token is the baid
         payment_methods = ::Killbill::PaypalExpress::PaypalExpressPaymentMethod.from_kb_account_id_and_token(@pm.token, kb_account_id, @call_context.tenant_id)
-        payment_methods.size.should == 1
+        expect(payment_methods.size).to be == 1
         payment_method = payment_methods.first
-        payment_method.should_not be_nil
-        payment_method.paypal_express_payer_id.should_not be_nil
-        payment_method.token.should == @pm.token
-        payment_method.kb_payment_method_id.should == @pm.kb_payment_method_id
+        expect(payment_method).not_to be_nil
+        expect(payment_method.paypal_express_payer_id).not_to be_nil
+        expect(payment_method.token).to eq(@pm.token)
+        expect(payment_method.kb_payment_method_id).to eq(@pm.kb_payment_method_id)
       end
     end
   end

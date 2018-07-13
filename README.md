@@ -263,3 +263,24 @@ Below is a list of optional parameters for build_form_descriptor call. More deta
 | notify_url                   | Your URL for receiving Instant Payment Notification (IPN) about this transaction. If you do not specify this value in the request, the notification URL from your Merchant Profile is used, if one exists.|
 | items                        | This parameter must be a JSON Array that contains a list of Hashes with keys of `name`, `number`, `quantity`, `amount`, `description`, `url` and `category`. |
 | review                       | If false, checkout button is set to Pay now. |
+
+
+Running the tests
+
+In order to run the integration tests, you will need a valid: buyer credential; signature; api credentials. 
+For new browsers you will also need to have Selenium standalone server running.
+
+To run the Selenium standalone server:
+1. Download the [Selenium standalone server version 3.13](https://www.seleniumhq.org/download/)
+2. Start the server:
+    - `java -jar selenium-server-standalone-3.13.0.jar`
+
+Then run the tests with:
+```
+SIGNATURE="<the api signature>" \
+LOGIN="<the api username>" \
+PASSWORD="<the api password>" \
+BUYER_USERNAME="<the buyer email id>" \
+BUYER_PASSWORD="<the buyer password>" \
+SELENIUM_STANDALONE_SERVER="true" \
+```

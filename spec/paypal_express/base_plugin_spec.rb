@@ -57,7 +57,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                          :no_shipping => true,
                          :max_amount => amount_in_cents
                        }
-    options.should == expected_options
+    expect(options).to eq(expected_options)
 
     # Test with correct option format and unwanted property, e.g., fakeKey and unlimited
     options = { :amount => 9900,
@@ -96,7 +96,7 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                          :address => {:name => 'john', :address1 => '111', :address2 => '12', :state => 'ca', :city => 'palo alto', :country => 'jacket', :phone => 'test', :zip => 'unknown'},
                          :funding_sources => {:source => 'unknown'}
                       }
-    options.should == expected_options
+    expect(options).to eq(expected_options)
 
     # Test with incorrect option format and invalid json format
     options = {}
@@ -128,6 +128,6 @@ describe Killbill::PaypalExpress::PaymentPlugin do
                          :shipping_address => nil,
                          :address => nil
                        }
-    options.should == expected_options
+    expect(options).to eq(expected_options)
   end
 end
