@@ -25,8 +25,8 @@ module Killbill #:nodoc:
 
         if with_baid
           options[:billing_agreement]               ||= {}
-          options[:billing_agreement][:type]        = options[:billing_agreement_type] || 'MerchantInitiatedBilling'
-          options[:billing_agreement][:description] = options[:billing_agreement_description] || 'Kill Bill billing agreement'
+          options[:billing_agreement][:type]        ||= options[:billing_agreement_type] || 'MerchantInitiatedBilling'
+          options[:billing_agreement][:description] ||= options[:billing_agreement_description] || 'Kill Bill billing agreement'
         end
 
         # Go to Paypal (SetExpressCheckout call)
