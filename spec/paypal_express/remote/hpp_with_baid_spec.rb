@@ -10,23 +10,13 @@ describe Killbill::PaypalExpress::PaymentPlugin do
   include ::Killbill::PaypalExpress::BuildPluginHelpers
   include ::Killbill::PaypalExpress::HppSpecHelpers
 
-  context 'hpp test with a single account', :single_account => true do
+  context 'hpp test with billing agreement', :single_account => true do
     before(:all) do
       @payment_processor_account_id = 'default'
       @plugin = build_start_paypal_plugin
       hpp_setup
     end
 
-    include_examples 'hpp_spec_common'
-  end
-
-  context 'hpp test with multiple accounts', :multiple_accounts => true do
-    before(:all) do
-      @payment_processor_account_id = 'paypal_test_account'
-      @plugin = build_start_paypal_plugin @payment_processor_account_id
-      hpp_setup
-    end
-
-    include_examples 'hpp_spec_common'
+    include_examples 'hpp_spec_common', :with_baid => true, :billing_agreement_type => 'MerchantInitiatedBillingSingleAgreement'
   end
 end
