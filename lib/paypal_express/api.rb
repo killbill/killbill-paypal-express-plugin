@@ -316,12 +316,15 @@ module Killbill #:nodoc:
       def initiate_express_checkout(kb_account_id, amount, currency, properties, context)
         properties_hash = properties_to_hash(properties)
 
-        with_baid = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :with_baid)
-
         options = {}
         options[:return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :return_url)
         options[:cancel_return_url] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :cancel_return_url)
         options[:payment_processor_account_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
+
+        with_baid = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :with_baid)
+        if with_baid
+          [:billing_agreement_type, :billing_agreement_description].each { |sym| options[sym] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, sym) }
+        end
 
         add_optional_parameters options, properties_hash, currency
 
