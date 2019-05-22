@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    killbill-paypal-express (5.0.10)
+    killbill-paypal-express (5.0.11)
       actionpack (~> 4.1.0)
       actionview (~> 4.1.0)
       activemerchant (~> 1.53.0)
