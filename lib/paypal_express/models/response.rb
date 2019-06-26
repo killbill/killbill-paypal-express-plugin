@@ -98,7 +98,6 @@ module Killbill #:nodoc:
 
       def self.sensitive_fields
         [:payer_name,
-         :payer_email,
          :contact_phone,
          :ship_to_address_name,
          :ship_to_address_company,

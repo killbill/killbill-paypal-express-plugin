@@ -57,7 +57,7 @@ describe Killbill::PaypalExpress::PaypalExpressResponse do
         "tenant1",      # kb_tenant_id
         load_paypal_response(action, "success")
     )
-    expect(response.payer_email).to be_nil
+    expect(response.payer_email).to eq('test@example.com')
     expect(response.payer_name).to be_nil
     expect(response.ship_to_address_address1).to be_nil
     expect(response.payer_id).to eq('MY_PAYER_ID')
