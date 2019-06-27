@@ -119,9 +119,6 @@ module Killbill
           end
           continue_button.click unless continue_button.nil?
 
-          puts 'xxxxx' + continue_button.nil?.to_s
-
-
           # Confirmation page
           confirm_element = wait.until {
             confirm_element = driver.find_element(:id, 'confirmButtonTop') rescue nil
