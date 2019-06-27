@@ -105,8 +105,24 @@ module Killbill
             login_element.click
           end
 
-          # Confirmation page
+          sleep 2
+
           driver.switch_to.default_content
+          begin
+            # # There could be page where you need to select your funding source
+            continue_button = wait.until {
+                          continue_button = driver.find_element(:xpath, "//button[text()='Continue']") rescue nil
+                          ready?(continue_button) ? continue_button : false
+                        }
+          rescue Selenium::WebDriver::Error::TimeOutError
+            # Ignore since there is no 'continue' page to select the funding source
+          end
+          continue_button.click unless continue_button.nil?
+
+          puts 'xxxxx' + continue_button.nil?.to_s
+
+
+          # Confirmation page
           confirm_element = wait.until {
             confirm_element = driver.find_element(:id, 'confirmButtonTop') rescue nil
             if ready?(confirm_element)
