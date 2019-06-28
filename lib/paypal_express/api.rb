@@ -301,16 +301,21 @@ module Killbill #:nodoc:
         response
       end
 
-      def add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+      def add_default_options(kb_payment_transaction_id, options)
+        options[:payment_type] ||= 'Any'
+        options[:invoice_id]   ||= kb_payment_transaction_id
+        options[:ip]           ||= @ip
+      end
+
+      def add_payment_method_options(kb_account_id, kb_payment_method_id, context, options, properties_hash)
+        options[:token] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token) || find_last_token(kb_account_id, context.tenant_id)
+        options[:reference_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :baid)
+
         payment_method = @payment_method_model.from_kb_payment_method_id(kb_payment_method_id, context.tenant_id)
 
         options[:payer_id]     ||= payment_method.paypal_express_payer_id.presence
         options[:token]        ||= payment_method.paypal_express_token.presence
         options[:reference_id] ||= payment_method.token.presence # baid
-
-        options[:payment_type] ||= 'Any'
-        options[:invoice_id]   ||= kb_payment_transaction_id
-        options[:ip]           ||= @ip
       end
 
       def initiate_express_checkout(kb_account_id, amount, currency, properties, context)
@@ -371,7 +376,8 @@ module Killbill #:nodoc:
           transaction
         else
           options = {}
-          add_required_options(kb_payment_transaction_id, kb_payment_method_id, context, options)
+          add_default_options(kb_payment_transaction_id, options)
+          add_payment_method_options(kb_account_id, kb_payment_method_id, context, options, properties_hash)
           options[:token] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :token) || find_last_token(kb_account_id, context.tenant_id)
           # Find the payment_processor_id if not provided
           payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])

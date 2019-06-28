@@ -64,6 +64,15 @@ shared_examples 'baid_spec_common' do
     find_value_from_properties(payment_infos[1].properties, 'payment_processor_account_id').should == @payment_processor_account_id
   end
 
+  it 'should be able to auth with input baid' do
+    local_properties = @properties.clone
+    local_properties << build_property(:baid, @pm.token)
+    payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, local_properties, @call_context)
+    payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
+    payment_response.amount.should == @amount
+    payment_response.transaction_type.should == :AUTHORIZE
+  end
+
   it 'should be able to auth, capture and refund' do
     payment_response = @plugin.authorize_payment(@pm.kb_account_id, @kb_payment.id, @kb_payment.transactions[0].id, @pm.kb_payment_method_id, @amount, @currency, @properties, @call_context)
     payment_response.status.should eq(:PROCESSED), payment_response.gateway_error
