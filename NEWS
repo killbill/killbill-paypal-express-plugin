@@ -1,3 +1,6 @@
+5.0.13
+    Allow baid to be passed in as a parameter
+
 5.0.12
     Persist PayPal user email
 
