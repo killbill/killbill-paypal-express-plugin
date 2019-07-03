@@ -396,9 +396,6 @@ shared_examples 'hpp_spec_common' do |options = {}|
       kb_trx_id = validate_form_property(form, 'kb_transaction_id')
       validate_token(form)
 
-      # Sleep 15s to allow details_for endpoint be populated with data from PayPal.
-      sleep 15
-
       @plugin.authorize_payment(@pm.kb_account_id, kb_payment_id, kb_trx_id, @pm.kb_payment_method_id, @amount, @currency, properties, @call_context)
       nb_plugin_info = 1
       if type == :AUTHORIZE
