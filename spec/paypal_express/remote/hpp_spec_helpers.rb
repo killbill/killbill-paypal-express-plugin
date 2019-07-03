@@ -334,8 +334,8 @@ module Killbill
 
       def verify_janitor_transition(nb_trx_plugin_info, trx_type, trx_status, kb_payment_id, delete_last_trx = true, hard_expiration_date = 0, janitor_delay = 0)
         transition_last_response_to_UNDEFINED(nb_trx_plugin_info, kb_payment_id, delete_last_trx)
-        # wait 5 sec for PayPal to populate the record in search endpoint
-        sleep 5
+        # wait 15 sec for PayPal to populate the record in search endpoint
+        sleep 15
         janitor_delay_threshold = Killbill::Plugin::Model::PluginProperty.new
         janitor_delay_threshold.key = 'janitor_delay_threshold'
         janitor_delay_threshold.value = janitor_delay
