@@ -96,7 +96,7 @@ module Killbill
         payer_id = find_value_from_properties(payment_response.properties, 'payerId')
         payer_id.should_not be_nil
 
-        validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
+        payer_email = validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
         # Verify GET AUTHORIZED PAYMENT
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
         payment_infos.size.should == 1
@@ -109,6 +109,7 @@ module Killbill
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
+        find_value_from_properties(payment_infos[0].properties, 'payerEmail').should == payer_email
         find_value_from_properties(payment_infos[0].properties, 'paymentInfoPaymentStatus').should == 'Pending'
         find_value_from_properties(payment_infos[0].properties, 'paymentInfoPendingReason').should == 'authorization'
         find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id

@@ -620,14 +620,18 @@ module Killbill #:nodoc:
       end
 
       def get_raw_payment_info(kb_payment_id, context)
-        ignored_api_calls = [:details_for]
         responses = @response_model.from_kb_payment_id(@transaction_model, kb_payment_id, context.tenant_id)
+        details_for_response = responses.select {|r| r.api_call.to_sym == :details_for}.last
+        details_for_plugin_info = details_for_response.nil? ? nil : details_for_response.to_transaction_info_plugin
+
         responses = responses.reject do |response|
-          ignored_api_calls.include?(response.api_call.to_sym)
+          response == details_for_response
         end
         t_info_plugins = responses.collect do |response|
           response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
         end
+
+        merge_selected_properties_from_details_call(t_info_plugins, details_for_plugin_info, [:payerEmail])
 
         # Completed purchases/authorizations will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase/authorize')
         # Other transaction types don't support the :PENDING state
@@ -637,6 +641,24 @@ module Killbill #:nodoc:
         # Filter out the pending transaction if there is already a response tied with the same transaction but indicating a final state
         t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
         [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
+      end
+
+      def merge_selected_properties_from_details_call(plugin_infos, to_merge_plugin_info, merge_properties)
+        unless to_merge_plugin_info.nil?
+          matched_trx_plugin_info = plugin_infos.detect {|info| info.kb_transaction_payment_id == to_merge_plugin_info.kb_transaction_payment_id}
+          unless matched_trx_plugin_info.nil?
+            merge_properties.each do |p|
+              p_value = find_value_from_properties(to_merge_plugin_info.properties, p)
+              unless p_value.blank?
+                if matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s}.nil?
+                  matched_trx_plugin_info.properties << create_plugin_property(p.to_s, p_value)
+                else
+                  matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s} .value = p_value
+                end
+              end
+            end
+          end
+        end
       end
     end
   end
