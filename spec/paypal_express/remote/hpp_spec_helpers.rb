@@ -43,6 +43,8 @@ module Killbill
 
       def validate_token(form)
         login_and_confirm form.form_url
+        # Sleep 15s to wait for the details_for endpoint to be ready  at PayPal
+        sleep 15
       end
 
       def purchase_and_refund(kb_payment_id, purchase_payment_external_key, purchase_properties)
@@ -96,7 +98,7 @@ module Killbill
         payer_id = find_value_from_properties(payment_response.properties, 'payerId')
         payer_id.should_not be_nil
 
-        validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
+        payer_email = validate_details_for(kb_payment_id, :AUTHORIZE, payer_id)
         # Verify GET AUTHORIZED PAYMENT
         payment_infos = @plugin.get_payment_info(@pm.kb_account_id, kb_payment_id, properties, @call_context)
         payment_infos.size.should == 1
@@ -109,6 +111,7 @@ module Killbill
         payment_infos[0].gateway_error.should == 'Success'
         payment_infos[0].gateway_error_code.should be_nil
         find_value_from_properties(payment_infos[0].properties, 'payerId').should == payer_id
+        find_value_from_properties(payment_infos[0].properties, 'payerEmail').should == payer_email
         find_value_from_properties(payment_infos[0].properties, 'paymentInfoPaymentStatus').should == 'Pending'
         find_value_from_properties(payment_infos[0].properties, 'paymentInfoPendingReason').should == 'authorization'
         find_value_from_properties(payment_infos[0].properties, 'payment_processor_account_id').should == payment_processor_account_id
@@ -333,8 +336,6 @@ module Killbill
 
       def verify_janitor_transition(nb_trx_plugin_info, trx_type, trx_status, kb_payment_id, delete_last_trx = true, hard_expiration_date = 0, janitor_delay = 0)
         transition_last_response_to_UNDEFINED(nb_trx_plugin_info, kb_payment_id, delete_last_trx)
-        # wait 5 sec for PayPal to populate the record in search endpoint
-        sleep 5
         janitor_delay_threshold = Killbill::Plugin::Model::PluginProperty.new
         janitor_delay_threshold.key = 'janitor_delay_threshold'
         janitor_delay_threshold.value = janitor_delay
