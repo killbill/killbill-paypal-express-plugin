@@ -1,3 +1,6 @@
+5.0.14
+    Merge payer_email to get endpoint
+
 5.0.13
     Allow baid to be passed in as a parameter
 
