@@ -96,7 +96,6 @@ module Killbill #:nodoc:
            cancel_pending_transactions(filtered_plugin_info, with_only_pending_trx)
           return get_raw_payment_info(kb_payment_id, context)[0]
         end
-
         filtered_plugin_info
       end
 
@@ -631,8 +630,6 @@ module Killbill #:nodoc:
           response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
         end
 
-        merge_selected_properties_from_details_call(t_info_plugins, details_for_plugin_info, [:payerEmail])
-
         # Completed purchases/authorizations will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase/authorize')
         # Other transaction types don't support the :PENDING state
         target_transaction_types = [:PURCHASE, :AUTHORIZE]
@@ -640,7 +637,9 @@ module Killbill #:nodoc:
 
         # Filter out the pending transaction if there is already a response tied with the same transaction but indicating a final state
         t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
-        [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
+        filtered_plugin_info = with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending
+        merge_selected_properties_from_details_call(filtered_plugin_info, details_for_plugin_info, [:payerEmail])
+        [filtered_plugin_info, t_info_plugins, with_only_pending_trx]
       end
 
       def merge_selected_properties_from_details_call(plugin_infos, to_merge_plugin_info, merge_properties)
@@ -651,9 +650,12 @@ module Killbill #:nodoc:
               p_value = find_value_from_properties(to_merge_plugin_info.properties, p)
               unless p_value.blank?
                 if matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s}.nil?
+                  logger.info('insert new property ' + matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s}.value.to_s)
                   matched_trx_plugin_info.properties << create_plugin_property(p.to_s, p_value)
                 else
                   matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s} .value = p_value
+                  logger.info('update existing property ' + matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s}.value.to_s)
+                  logger.info('update existing property ' + matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == 'paypalExpressResponseId'}.value.to_s)
                 end
               end
             end
