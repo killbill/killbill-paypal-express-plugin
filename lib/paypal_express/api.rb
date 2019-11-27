@@ -383,6 +383,37 @@ module Killbill #:nodoc:
           payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
           options[:payment_processor_account_id] = payment_processor_account_id
 
+          # Retrieve payer_id and payer_email
+          begin
+            payer_info = get_payer_info(options[:token],
+                                        kb_account_id,
+                                        context.tenant_id,
+                                        payment_processor_account_id,
+                                        kb_payment_id,
+                                        kb_payment_transaction_id,
+                                        transaction_type)
+          rescue => e
+            # Maybe invalid token?
+            response = @response_model.create(:api_call                     => api_call_type,
+                                              :kb_account_id                => kb_account_id,
+                                              :kb_payment_id                => kb_payment_id,
+                                              :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                              :transaction_type             => transaction_type,
+                                              :authorization                => nil,
+                                              :payment_processor_account_id => payment_processor_account_id,
+                                              :kb_tenant_id                 => context.tenant_id,
+                                              :success                      => false,
+                                              :created_at                   => Time.now.utc,
+                                              :updated_at                   => Time.now.utc,
+                                              :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
+            return response.to_transaction_info_plugin(nil)
+          end
+          options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
+          if options[:payer_id].nil?
+            options[:payer_id] = payer_info.payer_id
+          end
+          options[:payer_email] = payer_info.payer_email
+
           # We have a baid on file
           if options[:reference_id]
             if is_authorize
@@ -398,37 +429,6 @@ module Killbill #:nodoc:
             end
           else
             # One-off payment
-            # Retrieve payer_id and payer_email
-            begin
-              payer_info = get_payer_info(options[:token],
-                                          kb_account_id,
-                                          context.tenant_id,
-                                          payment_processor_account_id,
-                                          kb_payment_id,
-                                          kb_payment_transaction_id,
-                                          transaction_type)
-            rescue => e
-              # Maybe invalid token?
-              response = @response_model.create(:api_call                     => api_call_type,
-                                                :kb_account_id                => kb_account_id,
-                                                :kb_payment_id                => kb_payment_id,
-                                                :kb_payment_transaction_id    => kb_payment_transaction_id,
-                                                :transaction_type             => transaction_type,
-                                                :authorization                => nil,
-                                                :payment_processor_account_id => payment_processor_account_id,
-                                                :kb_tenant_id                 => context.tenant_id,
-                                                :success                      => false,
-                                                :created_at                   => Time.now.utc,
-                                                :updated_at                   => Time.now.utc,
-                                                :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
-              return response.to_transaction_info_plugin(nil)
-            end
-            options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
-            if options[:payer_id].nil?
-              options[:payer_id] = payer_info.payer_id
-            end
-            options[:payer_email] = payer_info.payer_email
-
             if is_authorize
               gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 gateway.authorize(amount_in_cents, options)
@@ -620,8 +620,10 @@ module Killbill #:nodoc:
       end
 
       def get_raw_payment_info(kb_payment_id, context)
+        puts "get_raw_payment_info: from_kb_payment_id(#{@transaction_model}, #{kb_payment_id}, #{context.tenant_id})"
         responses = @response_model.from_kb_payment_id(@transaction_model, kb_payment_id, context.tenant_id)
         details_for_response = responses.select {|r| r.api_call.to_sym == :details_for}.last
+        puts "get_raw_payment_info: details for response #{details_for_response}"
         details_for_plugin_info = details_for_response.nil? ? nil : details_for_response.to_transaction_info_plugin
 
         responses = responses.reject do |response|
@@ -631,7 +633,9 @@ module Killbill #:nodoc:
           response.to_transaction_info_plugin(response.send("#{@identifier}_transaction"))
         end
 
+        puts "get_raw_payment_info: transaction properties #{t_info_plugins}"
         merge_selected_properties_from_details_call(t_info_plugins, details_for_plugin_info, [:payerEmail])
+        puts "get_raw_payment_info: transaction properties with details #{t_info_plugins}"
 
         # Completed purchases/authorizations will have two rows in the responses table (one for api_call 'build_form_descriptor', one for api_call 'purchase/authorize')
         # Other transaction types don't support the :PENDING state
@@ -640,7 +644,9 @@ module Killbill #:nodoc:
 
         # Filter out the pending transaction if there is already a response tied with the same transaction but indicating a final state
         t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
-        [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
+        result = [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
+        puts "get_raw_payment_info: final result #{result}"
+        result
       end
 
       def merge_selected_properties_from_details_call(plugin_infos, to_merge_plugin_info, merge_properties)
