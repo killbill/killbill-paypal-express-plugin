@@ -382,22 +382,9 @@ module Killbill #:nodoc:
           # Find the payment_processor_id if not provided
           payment_processor_account_id ||= find_payment_processor_id_from_initial_call(kb_account_id, context.tenant_id, options[:token])
           options[:payment_processor_account_id] = payment_processor_account_id
+          options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
 
-          # We have a baid on file
-          if options[:reference_id]
-            if is_authorize
-              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-                # Can't use default implementation: the purchase signature is for one-off payments only
-                gateway.authorize_reference_transaction(amount_in_cents, options)
-              end
-            else
-              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-                # Can't use default implementation: the purchase signature is for one-off payments only
-                gateway.reference_transaction(amount_in_cents, options)
-              end
-            end
-          else
-            # One-off payment
+          if options.has_key?(:token)
             # Retrieve payer_id and payer_email
             begin
               payer_info = get_payer_info(options[:token],
@@ -423,12 +410,27 @@ module Killbill #:nodoc:
                                                 :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
               return response.to_transaction_info_plugin(nil)
             end
-            options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
             if options[:payer_id].nil?
               options[:payer_id] = payer_info.payer_id
             end
             options[:payer_email] = payer_info.payer_email
+          end
 
+          # We have a baid on file
+          if options[:reference_id]
+            if is_authorize
+              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+                # Can't use default implementation: the purchase signature is for one-off payments only
+                gateway.authorize_reference_transaction(amount_in_cents, options)
+              end
+            else
+              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+                # Can't use default implementation: the purchase signature is for one-off payments only
+                gateway.reference_transaction(amount_in_cents, options)
+              end
+            end
+          else
+            # One-off payment
             if is_authorize
               gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 gateway.authorize(amount_in_cents, options)
@@ -640,20 +642,20 @@ module Killbill #:nodoc:
 
         # Filter out the pending transaction if there is already a response tied with the same transaction but indicating a final state
         t_info_plugins_without_pending = t_info_plugins.reject { |t_info_plugin| target_transaction_types.include?(t_info_plugin.transaction_type) && t_info_plugin.status == :PENDING }
-        [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
+        result = [with_only_pending_trx ? t_info_plugins : t_info_plugins_without_pending, t_info_plugins, with_only_pending_trx]
+        result
       end
 
       def merge_selected_properties_from_details_call(plugin_infos, to_merge_plugin_info, merge_properties)
         unless to_merge_plugin_info.nil?
-          matched_trx_plugin_info = plugin_infos.detect {|info| info.kb_transaction_payment_id == to_merge_plugin_info.kb_transaction_payment_id}
-          unless matched_trx_plugin_info.nil?
+          plugin_infos.each do |trx_plugin_info|
             merge_properties.each do |p|
               p_value = find_value_from_properties(to_merge_plugin_info.properties, p)
               unless p_value.blank?
-                if matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s}.nil?
-                  matched_trx_plugin_info.properties << create_plugin_property(p.to_s, p_value)
+                if trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s}.nil?
+                  trx_plugin_info.properties << create_plugin_property(p.to_s, p_value)
                 else
-                  matched_trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s} .value = p_value
+                  trx_plugin_info.properties.detect {|mp| mp.key.to_s == p.to_s} .value = p_value
                 end
               end
             end
