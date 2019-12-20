@@ -1,3 +1,6 @@
+5.0.15
+    Fix return of payer email
+
 5.0.14
     Merge payer_email to get endpoint
 
