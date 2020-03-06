@@ -301,6 +301,28 @@ module Killbill #:nodoc:
         response
       end
 
+      def create_billing_aggrement(token,
+                                   kb_account_id,
+                                   kb_tenant_id,
+                                   payment_processor_account_id,
+                                   kb_payment_id = nil,
+                                   kb_payment_transaction_id = nil,
+                                   transaction_type = ni)
+        raise 'Could create billing aggrement: the token is missing' if token.blank?
+
+        # Go to Paypal to create the billing aggrement
+        payment_processor_account_id = payment_processor_account_id || :default
+        gateway                      = lookup_gateway(payment_processor_account_id, kb_tenant_id)
+        gw_response                  = gateway.store(token)
+
+        response = @response_model.create_response(:store, kb_account_id, kb_payment_id, kb_payment_transaction_id, transaction_type, payment_processor_account_id, kb_tenant_id, gw_response)
+
+        raise response.message unless response.success?
+        raise "Could not create billing aggrement for token #{token}" if response.billing_agreement_id.blank?
+
+        response
+      end
+
       def add_default_options(kb_payment_transaction_id, options)
         options[:payment_type] ||= 'Any'
         options[:invoice_id]   ||= kb_payment_transaction_id
@@ -394,6 +416,7 @@ module Killbill #:nodoc:
                                           kb_payment_id,
                                           kb_payment_transaction_id,
                                           transaction_type)
+
             rescue => e
               # Maybe invalid token?
               response = @response_model.create(:api_call                     => api_call_type,
@@ -410,35 +433,51 @@ module Killbill #:nodoc:
                                                 :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
               return response.to_transaction_info_plugin(nil)
             end
+
             if options[:payer_id].nil?
               options[:payer_id] = payer_info.payer_id
             end
             options[:payer_email] = payer_info.payer_email
-          end
 
-          # We have a baid on file
-          if options[:reference_id]
-            if is_authorize
-              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-                # Can't use default implementation: the purchase signature is for one-off payments only
-                gateway.authorize_reference_transaction(amount_in_cents, options)
-              end
-            else
-              gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-                # Can't use default implementation: the purchase signature is for one-off payments only
-                gateway.reference_transaction(amount_in_cents, options)
+            # We don't have baid on file
+            if options[:reference_id].nil?
+              begin
+                options[:reference_id] = create_billing_aggrement(options[:token],
+
+                                                  kb_account_id,
+                                                  context.tenant_id,
+                                                  payment_processor_account_id,
+                                                  kb_payment_id,
+                                                  kb_payment_transaction_id,
+                                                  transaction_type)
+              rescue => e
+                #Maybe invalid token?
+                response = @response_model.create(:api_call                     => api_call_type,
+                                              :kb_account_id                => kb_account_id,
+                                              :kb_payment_id                => kb_payment_id,
+                                              :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                              :transaction_type             => transaction_type,
+                                              :authorization                => nil,
+                                              :payment_processor_account_id => payment_processor_account_id,
+                                              :kb_tenant_id                 => context.tenant_id,
+                                              :success                      => false,
+                                              :created_at                   => Time.now.utc,
+                                              :updated_at                   => Time.now.utc,
+                                              :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
+                return response.to_transaction_info_plugin(nil)
               end
             end
+          end
+
+          if is_authorize
+            gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+              # Can't use default implementation: the purchase signature is for one-off payments only
+              gateway.authorize_reference_transaction(amount_in_cents, options)
+            end
           else
-            # One-off payment
-            if is_authorize
-              gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-                gateway.authorize(amount_in_cents, options)
-              end
-            else
-              gateway_call_proc  = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
-                gateway.purchase(amount_in_cents, options)
-              end
+            gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
+              # Can't use default implementation: the purchase signature is for one-off payments only
+              gateway.reference_transaction(amount_in_cents, options)
             end
           end
 
@@ -508,8 +547,8 @@ module Killbill #:nodoc:
          :invoice_id,
          :notify_url,
          :items].each do |sym|
-           option_val = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, sym)
-           options[sym] = option_val unless option_val.nil?
+          option_val = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, sym)
+          options[sym] = option_val unless option_val.nil?
         end
 
         # Special consideration for amount related options
