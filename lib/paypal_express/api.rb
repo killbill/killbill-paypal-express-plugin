@@ -351,6 +351,7 @@ module Killbill #:nodoc:
 
         with_baid = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :with_baid)
         if with_baid
+          options[:payment_processor_account_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_master_processor_account_id)
           [:billing_agreement_type, :billing_agreement_description].each { |sym| options[sym] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, sym) }
         end
 
@@ -372,7 +373,15 @@ module Killbill #:nodoc:
 
       def authorize_or_purchase_payment(kb_account_id, kb_payment_id, kb_payment_transaction_id, kb_payment_method_id, amount, currency, properties, context, is_authorize = false)
         properties_hash = properties_to_hash properties
+        with_baid = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :with_baid)
+        logger.info("withBaidFlag=#{with_baid}")
+
         payment_processor_account_id = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_processor_account_id)
+        logger.info("paymentProcessorAccountId=#{payment_processor_account_id}")
+
+        payment_master_processor_account_id = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payment_master_processor_account_id)
+        logger.info("paymentMasterProcessorAccountId=#{payment_master_processor_account_id}")
+
         transaction_type = is_authorize ? :AUTHORIZE : :PURCHASE
         api_call_type = is_authorize ? :authorize : :purchase
 
@@ -407,13 +416,20 @@ module Killbill #:nodoc:
           options[:payment_processor_account_id] = payment_processor_account_id
           options[:payer_id] = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :payer_id)
 
+          if with_baid
+            baid_payment_processor_account_id = payment_master_processor_account_id
+          else
+            baid_payment_processor_account_id_ = payment_processor_account_id
+          end
+
           if options.has_key?(:token)
             # Retrieve payer_id and payer_email
             begin
+
               payer_info = get_payer_info(options[:token],
                                           kb_account_id,
                                           context.tenant_id,
-                                          payment_processor_account_id,
+                                          baid_payment_processor_account_id,
                                           kb_payment_id,
                                           kb_payment_transaction_id,
                                           transaction_type)
@@ -425,7 +441,7 @@ module Killbill #:nodoc:
                                                 :kb_payment_transaction_id    => kb_payment_transaction_id,
                                                 :transaction_type             => transaction_type,
                                                 :authorization                => nil,
-                                                :payment_processor_account_id => payment_processor_account_id,
+                                                :payment_processor_account_id => baid_payment_processor_account_id,
                                                 :kb_tenant_id                 => context.tenant_id,
                                                 :success                      => false,
                                                 :created_at                   => Time.now.utc,
@@ -439,16 +455,13 @@ module Killbill #:nodoc:
             options[:payer_email] = payer_info.payer_email
           end
 
-          with_baid = ::Killbill::Plugin::ActiveMerchant::Utils.normalized(properties_hash, :with_baid)
-          logger.info("withBaidFlag='#{with_baid}' ")
-
           if with_baid
             if options.has_key?(:token) && options[:reference_id].nil?
               begin
                 options[:reference_id] = create_billing_aggrement(options[:token],
                                                                          kb_account_id,
                                                                          context.tenant_id,
-                                                                         payment_processor_account_id,
+                                                                  baid_payment_processor_account_id,
                                                                          kb_payment_id,
                                                                          kb_payment_transaction_id,
                                                                          transaction_type).billing_agreement_id
@@ -460,7 +473,7 @@ module Killbill #:nodoc:
                                                   :kb_payment_transaction_id    => kb_payment_transaction_id,
                                                   :transaction_type             => transaction_type,
                                                   :authorization                => nil,
-                                                  :payment_processor_account_id => payment_processor_account_id,
+                                                  :payment_processor_account_id => baid_payment_processor_account_id,
                                                   :kb_tenant_id                 => context.tenant_id,
                                                   :success                      => false,
                                                   :created_at                   => Time.now.utc,
@@ -469,6 +482,7 @@ module Killbill #:nodoc:
                 return response.to_transaction_info_plugin(nil)
               end
             end
+
             if is_authorize
               logger.info("BillingAggrementID='#{options[:reference_id]}' ")
               gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
