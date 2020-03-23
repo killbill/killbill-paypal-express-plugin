@@ -308,7 +308,6 @@ module Killbill #:nodoc:
                                    kb_payment_id = nil,
                                    kb_payment_transaction_id = nil,
                                    transaction_type = nil)
-        logger.info("CreateBillingRecord")
         raise 'Could create billing aggrement: the token is missing' if token.blank?
 
         # Go to Paypal to create the billing aggrement
@@ -451,7 +450,6 @@ module Killbill #:nodoc:
             end
 
             if is_authorize
-              logger.info("BillingAggrementID='#{options[:reference_id]}' ")
               gateway_call_proc = Proc.new do |gateway, linked_transaction, payment_source, amount_in_cents, options|
                 # Can't use default implementation: the purchase signature is for one-off payments only
                 gateway.authorize_reference_transaction(amount_in_cents, options)
