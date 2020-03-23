@@ -423,6 +423,37 @@ module Killbill #:nodoc:
 
           if with_baid
             if options.has_key?(:token) && options[:reference_id].nil?
+                # Retrieve payer_id and payer_email
+              begin
+
+                payer_info = get_payer_info(options[:token],
+                                            kb_account_id,
+                                            context.tenant_id,
+                                            baid_payment_processor_account_id,
+                                            kb_payment_id,
+                                            kb_payment_transaction_id,
+                                            transaction_type)
+              rescue => e
+                # Maybe invalid token?
+                response = @response_model.create(:api_call                     => api_call_type,
+                                                  :kb_account_id                => kb_account_id,
+                                                  :kb_payment_id                => kb_payment_id,
+                                                  :kb_payment_transaction_id    => kb_payment_transaction_id,
+                                                  :transaction_type             => transaction_type,
+                                                  :authorization                => nil,
+                                                  :payment_processor_account_id => baid_payment_processor_account_id,
+                                                  :kb_tenant_id                 => context.tenant_id,
+                                                  :success                      => false,
+                                                  :created_at                   => Time.now.utc,
+                                                  :updated_at                   => Time.now.utc,
+                                                  :message                      => { :payment_plugin_status => :CANCELED, :exception_class => e.class.to_s, :exception_message => e.message }.to_json)
+                return response.to_transaction_info_plugin(nil)
+              end
+              if options[:payer_id].nil?
+                options[:payer_id] = payer_info.payer_id
+              end
+              options[:payer_email] = payer_info.payer_email
+
               begin
                 options[:reference_id] = create_billing_aggrement(options[:token],
                                                                          kb_account_id,
