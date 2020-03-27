@@ -418,7 +418,7 @@ module Killbill #:nodoc:
           if with_baid
             baid_payment_processor_account_id = payment_master_processor_account_id
           else
-            baid_payment_processor_account_id_ = payment_processor_account_id
+            baid_payment_processor_account_id = payment_processor_account_id
           end
 
           if with_baid
