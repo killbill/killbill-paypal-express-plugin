@@ -1,3 +1,5 @@
+⚠️ Starting with Kill Bill 0.22, use the [Braintree plugin](https://github.com/wovenware/killbill-braintree) instead ⚠️
+
 killbill-paypal-express-plugin
 ==============================
 
